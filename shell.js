@@ -20,6 +20,19 @@ import { keepLast, lastBook } from './store.js';
 const $ = (id) => document.getElementById(id);
 const frame = $('page');
 const settings = load();
+// Opened from the site: its language and light come along in the address
+// (?lang=ru&light=night), are kept as the reader's own, and leave the
+// address so a reload or a bookmark does not repeat them.
+{
+    const asked = new URLSearchParams(location.search);
+    const lang = asked.get('lang'), light = asked.get('light');
+    if (lang && (lang in languages || lang === 'auto')) settings.language = lang;
+    if (['auto', 'day', 'night'].includes(light)) settings.light = light;
+    if (lang || light) {
+        save(settings);
+        history.replaceState(null, '', location.pathname + location.hash);
+    }
+}
 setLanguage(resolve(settings.language));
 
 let book = null;
