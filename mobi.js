@@ -1101,5 +1101,5 @@ function convert(bytes, name, urls) {
     // The book's word (EXTH 527), else the letters' (the family's `TextDirection`).
     const declared = (book.direction || '').toLowerCase();
     const rightToLeft = declared === 'rtl' || (declared !== 'ltr' && looksRightToLeft(root.textContent.slice(0, 20000)));
-    return { title, author, language, rightToLeft, chapters, html: page(root.innerHTML, title, language), urls: kept };
+    return { title, author, language, rightToLeft, chapters, html: page(root.innerHTML, title, language), urls: kept, cover: book.cover && used.has(book.cover) ? book.cover : null };
 }

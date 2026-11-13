@@ -189,6 +189,13 @@ export async function convertEPUB(entries) {
         return url;
     };
 
+    // The cover's picture, for the book's card at home: EPUB 3's
+    // `cover-image`, else EPUB 2's <meta name="cover">.
+    const coverMeta = all(opf, 'meta').find((meta) => meta.getAttribute('name') === 'cover')?.getAttribute('content');
+    const coverItem = [...manifest.values()].find((item) => /\bcover-image\b/.test(item.properties))
+        || (coverMeta && manifest.get(coverMeta)) || null;
+    const cover = coverItem && /^image\//.test(coverItem.type) ? await picture(coverItem.path) : null;
+
     // Pass 1: every spine document as elements in one holder, cleaned, its
     // pictures in place, its links to other files noted.
     const holder = document.implementation.createHTMLDocument('');
@@ -358,5 +365,5 @@ export async function convertEPUB(entries) {
 
     // The spine's word, else the letters' (the family's `TextDirection`).
     const rightToLeft = declared ? declared === 'rtl' : looksRightToLeft(kept.map((item) => item.element.textContent.slice(0, 4000)).join(' '));
-    return { title, author, language, rightToLeft, chapters, html: page(body, title, language), urls };
+    return { title, author, language, rightToLeft, chapters, html: page(body, title, language), urls, cover };
 }

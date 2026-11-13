@@ -138,31 +138,59 @@ button.quiet:hover { color: var(--ink); background: var(--key); }
 
 /* The book one was reading: a quiet row — a small cover in the band's
    pattern, the title in the book's type and how far one got. */
-#resume {
-    display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 14px;
-    width: min(100% + 24px, 452px); margin: 22px 0 0 -12px; padding: 10px 12px; text-align: left;
+/* The book to go back to, and a ✕ in its corner (under the pointer; always
+   on a touch screen) that takes it and all that is kept of it away. */
+#home .shelf { margin: 22px 0 0; }
+#home .shelf[hidden] { display: none; }
+#home .shelf > .label { margin: 0 0 2px; font-size: 11px; font-weight: 500; letter-spacing: 0.02em; color: var(--brand-soft); }
+/* A free slot: the face a faint tint with a «+» in it, a quiet word — the
+   shape of a book not there yet; under the pointer it lifts as a card does. */
+#home .resume.free .cover { background: color-mix(in srgb, var(--brand-ink) 5%, transparent); box-shadow: none; }
+#home .resume.free .cover .initial { display: none; }
+#home .resume.free .cover::after { content: '+'; font: 300 24px/1 var(--sans); color: color-mix(in srgb, var(--brand-ink) 32%, transparent); }
+#home .resume.free .book:hover .cover::after { color: color-mix(in srgb, var(--brand-ink) 55%, transparent); }
+#home .resume.free .name { font-size: 16px; color: var(--brand-soft); opacity: 0.75; }
+#home .resume + .resume { margin-top: 6px; }
+/* The slot's number before its card: 1, 2, 3. */
+#home .book .slot { width: 1ch; font: 400 18px/1 var(--serif); font-variant-numeric: tabular-nums; color: var(--brand-soft); opacity: 0.7; text-align: center; }
+#home .resume { position: relative; width: min(100% + 24px, 452px); margin: 0 0 0 -12px; }
+#home .resume[hidden] { display: none; }
+#home .book {
+    display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: 14px;
+    width: 100%; margin: 0; padding: 10px 40px 10px 12px; text-align: left;
     background: none; border-radius: 12px;
 }
-#resume:hover { background: var(--key); }
-#resume .cover {
-    width: 36px; height: 50px; border-radius: 2px 4px 4px 2px; display: grid; place-items: center;
+#home .forget {
+    position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; padding: 0; border-radius: 50%;
+    display: grid; place-items: center; background: none; color: var(--brand-soft);
+    opacity: 0; transition: opacity 0.15s, background 0.15s;
+}
+#home .forget svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+#home .resume:hover .forget, #home .forget:focus-visible { opacity: 1; }
+#home .forget:hover { background: color-mix(in srgb, var(--brand-ink) 10%, transparent); color: var(--brand-ink); }
+@media (pointer: coarse) { #home .forget { opacity: 0.7; } }
+#home .book:hover { background: var(--key); }
+#home .book .cover {
+    width: 52px; height: 74px; border-radius: 2px 4px 4px 2px; display: grid; place-items: center;
     background-color: var(--band); background-image: var(--band-pattern); background-size: var(--cover-size, 80px 80px);
     box-shadow: inset 2px 0 0 rgba(0, 0, 0, 0.14), 0 0 0 1px var(--line), 0 1px 2px rgba(0, 0, 0, 0.12);
 }
-#resume .initial {
-    width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
-    background: var(--ground); color: var(--brand-ink); font: 400 13px/1 var(--serif);
+#home .book .initial {
+    width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--ground); color: var(--brand-ink); font: 400 16px/1 var(--serif);
 }
-#resume .words { display: grid; gap: 2px; min-width: 0; }
-#resume .label { font-size: 11px; font-weight: 500; letter-spacing: 0.02em; color: var(--brand-soft); }
-#resume .name { font: 400 18px/1.25 var(--serif); color: var(--brand-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#resume .author { font-size: 13px; line-height: 1.3; color: var(--brand-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#resume .author[hidden] { display: none; }
+/* The book's own cover, filling the face; the letter stands aside. */
+#home .book .cover.picture { background-color: var(--ground); background-size: cover; background-position: center; }
+#home .book .cover.picture .initial { display: none; }
+#home .book .words { display: grid; gap: 2px; min-width: 0; }
+#home .book .name { font: 400 20px/1.25 var(--serif); color: var(--brand-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#home .book .author { font-size: 14px; line-height: 1.3; color: var(--brand-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#home .book .author[hidden] { display: none; }
 /* How far: the line and its per cent on one axis. */
-#resume .how-far { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
-#resume .progress-line { flex: 1; display: block; height: 2px; border-radius: 1px; background: var(--track); overflow: hidden; }
-#resume .progress-line i { display: block; height: 100%; width: var(--read, 0%); background: var(--brand-accent); }
-#resume .share { flex: none; min-width: 3ch; text-align: right; color: var(--brand-soft); font-variant-numeric: tabular-nums; font-size: 12px; line-height: 1; }
+#home .book .how-far { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+#home .book .progress-line { flex: 1; display: block; height: 2px; border-radius: 1px; background: var(--track); overflow: hidden; }
+#home .book .progress-line i { display: block; height: 100%; width: var(--read, 0%); background: var(--brand-accent); }
+#home .book .share { flex: none; min-width: 3ch; text-align: right; color: var(--brand-soft); font-variant-numeric: tabular-nums; font-size: 12px; line-height: 1; }
 
 #samples { list-style: none; margin: 14px 0 0; padding: 0; font-size: 12px; line-height: 1.9; }
 
@@ -222,6 +250,7 @@ button.quiet:hover { color: var(--ink); background: var(--key); }
 #apps .also { margin: 24px 0 0; color: var(--brand-soft); font: italic 400 16px/1.55 var(--serif); }
 #apps .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
 #apps .card {
+    container-type: inline-size;
     display: flex; flex-direction: column; gap: 12px; padding: 18px 20px;
     background: var(--raised); border-radius: 16px; box-shadow: 0 0 0 1px var(--line);
 }
@@ -229,8 +258,12 @@ button.quiet:hover { color: var(--ink); background: var(--key); }
 #apps .card figure img { height: 100%; width: 100%; object-fit: contain; -webkit-mask-image: radial-gradient(closest-side, #000 82%, transparent); mask-image: radial-gradient(closest-side, #000 82%, transparent); }
 :root[style*="color-scheme: dark"] #apps .card figure { filter: brightness(0.72) saturate(0.85); }
 #apps .card header { display: flex; align-items: center; gap: 12px; }
+#apps .card header > div { min-width: 0; }
 #apps .card header img { width: 44px; height: 44px; border-radius: 10px; box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.15); }
-#apps h4 { margin: 0; font: 500 21px/1.2 var(--serif); color: var(--brand-ink); }
+/* The name on one line in a narrow card: «ContinuousReader» ran past its
+   edge; the type gives way to the card's width (100cqi, its content box
+   less the icon), down to 16px. */
+#apps h4 { margin: 0; font: 500 21px/1.2 var(--serif); font-size: clamp(16px, calc((100cqi - 56px) / 8.6), 21px); white-space: nowrap; color: var(--brand-ink); }
 #apps .role { margin: 2px 0 0; color: var(--brand-soft); font-size: 12px; }
 #apps .card > p { margin: 0; font: 400 16px/1.55 var(--serif); color: var(--brand-ink); }
 #apps .card .links { margin-top: auto; display: flex; gap: 16px; font-size: 13px; }
@@ -249,7 +282,7 @@ button.quiet:hover { color: var(--ink); background: var(--key); }
     #front { padding-top: 40px; }
     #home .lead { font-size: 16px; }
     #home .hint { display: none; }
-    #resume { width: calc(100% + 24px); }
+    #home .resume { width: calc(100% + 24px); }
     /* No room beside the apps' door: the notice takes a line of its own above it. */
     #home .update { order: -1; flex-basis: 100%; text-align: right; }
     #home .update:not([hidden]) + .version { margin-left: auto; }
@@ -328,20 +361,28 @@ button.quiet:hover { color: var(--ink); background: var(--key); }
 
 /* MARK: A PDF with text: read as text or as pictures? */
 
-#pdfAsk {
+#pdfAsk, #shelfAsk {
     width: min(480px, calc(100vw - 32px)); box-sizing: border-box; padding: 28px 32px 22px;
     border: 0; border-radius: 22px; background: var(--surface); color: var(--ink);
     box-shadow: var(--shadow), 0 0 0 1px var(--line);
 }
-#pdfAsk:focus { outline: none; }
-#pdfAsk[open] { animation: rise 0.18s ease-out; }
-#pdfAsk::backdrop { background: rgba(0, 0, 0, 0.12); animation: fade 0.18s ease-out; }
-#pdfAsk h2 { margin: 0 0 12px; font: 600 19px/1.2 Georgia, serif; letter-spacing: -0.005em; }
-#pdfAsk p { margin: 0 0 10px; line-height: 1.5; }
+#pdfAsk:focus, #shelfAsk:focus { outline: none; }
+#pdfAsk[open], #shelfAsk[open] { animation: rise 0.18s ease-out; }
+#pdfAsk::backdrop, #shelfAsk::backdrop { background: rgba(0, 0, 0, 0.12); animation: fade 0.18s ease-out; }
+#pdfAsk h2, #shelfAsk h2 { margin: 0 0 12px; font: 600 19px/1.2 Georgia, serif; letter-spacing: -0.005em; }
+#pdfAsk p, #shelfAsk p { margin: 0 0 10px; line-height: 1.5; }
 #pdfAsk .segmented { margin: 8px 0 14px; }
 #pdfAsk .note { font-size: 12px; color: var(--faint); }
-#pdfAsk footer { display: flex; justify-content: flex-end; margin-top: 18px; }
+#pdfAsk footer, #shelfAsk footer { display: flex; justify-content: flex-end; margin-top: 18px; }
 #pdfAsk.working .segmented { opacity: 0.5; pointer-events: none; }
+/* The slots are full: which book goes? A row each, its cover, its name. */
+#shelfAsk .rows { display: grid; gap: 6px; margin: 14px 0 4px; }
+#shelfAsk .row { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 6px 8px; border-radius: 10px; background: var(--key); }
+#shelfAsk .face { width: 30px; height: 42px; border-radius: 2px 3px 3px 2px; background: var(--line) center / cover; }
+#shelfAsk .what { min-width: 0; }
+#shelfAsk .what b, #shelfAsk .what span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#shelfAsk .what b { font-weight: 500; }
+#shelfAsk .what span { font-size: 12px; color: var(--faint); }
 
 /* MARK: The settings window */
 

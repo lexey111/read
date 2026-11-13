@@ -209,5 +209,7 @@ export function convertFB2(bytes) {
         .footnote-ref { font-size: 0.85em; }
         .note { color: #666; font-size: 0.85em; }`;
     const rightToLeft = ['he', 'ar', 'fa', 'ur', 'yi'].includes(language) || looksRightToLeft(main.textContent.slice(0, 20000));
-    return { title, author, language, rightToLeft, chapters, html: page(body, title, language, css), urls };
+    // The cover's picture, for the book's card at home.
+    const coverURL = coverPicture?.querySelector('img')?.getAttribute('src') || null;
+    return { title, author, language, rightToLeft, chapters, html: page(body, title, language, css), urls, cover: coverURL };
 }

@@ -170,7 +170,7 @@ export async function convertPages(entries, name) {
     const title = info.title || (info.series ? `${info.series}${info.number ? ' ' + info.number : ''}` : nameFromFile(name));
     return {
         title, author: (info.authors || []).join(', '), language: info.language || '',
-        rightToLeft, chapters: [], urls,
+        rightToLeft, chapters: [], urls, cover: urls[0] || null,
         pages: { rtl: rightToLeft, strip, firstAlone: true },
         html: pagesPage(body.innerHTML, title),
     };

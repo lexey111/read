@@ -127,11 +127,13 @@ export async function convertPDF(bytes, name, { mode, progress } = {}) {
     const given = mode === 'text' || mode === 'pages';
     const chosen = given ? mode : hasTextLayer(sample) && doc.numPages >= 8 ? 'text' : 'pages';
     const asked = !given && readable;
+    // The first page, small, as the book's cover on its card at home.
+    const cover = await firstPage(doc);
     if (chosen === 'text' && readable) {
         const book = await asText(doc, { title, authors, outline, name, language: meta.info?.Language, progress });
         if (book) {
             loading.destroy();
-            return { ...book, pdf: { mode: 'text', text: true, asked } };
+            return { ...book, cover, urls: cover ? [cover] : [], pdf: { mode: 'text', text: true, asked } };
         }
     }
 
@@ -175,13 +177,31 @@ export async function convertPDF(bytes, name, { mode, progress } = {}) {
     let drawer = null;
     return {
         title: shown, author: authors.join(', '), language: '',
-        rightToLeft, chapters, urls: [],
+        rightToLeft, chapters, urls: cover ? [cover] : [], cover,
         pages: { rtl: rightToLeft, strip: false, firstAlone },
         pdf: { mode: 'pages', text: readable, asked },
         html: pagesPage(body.innerHTML, shown),
         attach(view) { drawer?.stop(); drawer = drawPages(doc, view, sizes); },
         release() { drawer?.stop(); drawer = null; loading.destroy(); },
     };
+}
+
+/// The first page drawn 360 pixels tall, as a blob URL; null if it will not draw.
+async function firstPage(doc) {
+    try {
+        const proxy = await doc.getPage(1);
+        const base = proxy.getViewport({ scale: 1 });
+        const viewport = proxy.getViewport({ scale: 360 / Math.max(1, base.height) });
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.ceil(viewport.width);
+        canvas.height = Math.ceil(viewport.height);
+        await proxy.render({ canvasContext: canvas.getContext('2d'), viewport, background: '#ffffff' }).promise;
+        const blob = await new Promise((done) => canvas.toBlob(done, 'image/jpeg', 0.85));
+        canvas.width = canvas.height = 0;
+        return blob ? URL.createObjectURL(blob) : null;
+    } catch {
+        return null;
+    }
 }
 
 // MARK: - Text

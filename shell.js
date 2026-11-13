@@ -16,7 +16,7 @@ import { renderNews, latest } from './news.js';
 import { settingsPanel } from './panel.js';
 import { progressBar } from './progress.js';
 import { t, setLanguage, resolve, problem, languages, language } from './i18n.js';
-import { keepLast, lastBook } from './store.js';
+import { shelf, keep, refresh, forget, hasRoom, slots } from './store.js';
 
 const $ = (id) => document.getElementById(id);
 const frame = $('page');
@@ -218,7 +218,8 @@ async function show(next) {
 function closeBook() {
     localStorage.removeItem('nano.open');
     close();
-    offerLast();
+    offerShelf();
+    updateCheck();
 }
 
 function close() {
@@ -319,7 +320,7 @@ function speak() {
         node.setAttribute('aria-label', words);
         node.title = node.dataset.key ? `${words} (${node.dataset.key})` : words;
     }
-    if (!$('home').hidden) offerLast();
+    if (!$('home').hidden) offerShelf();
     offerInstall();
     // The family's form, told which reader and in which language (the site
     // has six of the eight; it keeps its own choice for the others).
@@ -524,21 +525,30 @@ function showContents() {
 /// reader turns it from text to pictures or back.
 let openedFile = null;
 
-async function openFile(file, { keep = true } = {}) {
+async function openFile(file, { keep: keeping = true } = {}) {
     $('problem').textContent = '';
+    const key = `${file.name}:${file.size}`;
+    // A new book needs a free slot: with the three full, the reader
+    // chooses which one goes, or keeps them all and opens nothing.
+    if (keeping && !(await makeRoom(key, file.name))) return;
     busy(t('Opening…'));
     try {
-        const key = `${file.name}:${file.size}`;
         const converted = await convert(await file.arrayBuffer(), file.name, {
             pdf: localStorage.getItem('nano.pdf.' + key) || undefined,
             progress: (done, total) => busy(`${t('Reading the PDF…')} ${Math.round((done / total) * 100)}%`),
         });
         await show({ key, ...converted });
         openedFile = file;
-        if (keep) {
+        // The cover, small, kept with the book for its card at home.
+        const cover = await thumbnail(converted.cover);
+        if (!keeping) {
+            // Opened again from home: its description brought up to date
+            // (an older record had no author, no cover).
+            refresh(key, { title: converted.title, author: converted.author || '', cover });
+        } else {
             // The bytes, not the File: Safari's private windows keep no
             // Blob in IndexedDB, and an ArrayBuffer is kept everywhere.
-            keepLast({ key, name: file.name, title: converted.title, author: converted.author || '', bytes: await file.arrayBuffer() });
+            await keep({ key, name: file.name, title: converted.title, author: converted.author || '', cover, bytes: await file.arrayBuffer() });
             // Asked once a book is read: the browser keeps the place and
             // the book through its own clean-ups.
             navigator.storage?.persist?.().catch(() => {});
@@ -659,41 +669,157 @@ async function readPDFAs(mode) {
 
 /// A book the family's converter already made — the development samples.
 async function openSample(slug, title) {
+    if (!(await makeRoom('sample:' + slug, title))) return;
     const base = new URL(`samples/${slug}/`, location.href).href;
     const source = await (await fetch(base + 'content.html')).text();
     const html = source.replace(/<head>/i, `<head><base href="${base}">`);
     await show({ key: 'sample:' + slug, title, author: '', html });
-    keepLast({ key: 'sample:' + slug, name: slug, title, sample: slug });
+    keep({ key: 'sample:' + slug, name: slug, title, sample: slug });
 }
 
-/// The last book again, as it was kept.
+/// A kept book again, as it was kept.
 async function reopen(record) {
     if (record.sample) return openSample(record.sample, record.title);
     const file = new File([record.bytes ?? record.file], record.name);
     return openFile(file, { keep: false });
 }
 
-/// At home: the last book, one press away.
-async function offerLast() {
-    const record = await lastBook();
-    const door = $('resume');
-    door.hidden = !record;
-    if (!record) return;
+/// At home: the books kept, a card each in its slot, one press away.
+let coverURLs = [];
+async function offerShelf() {
+    const books = await shelf();
+    for (const url of coverURLs) URL.revokeObjectURL(url);
+    coverURLs = [];
+    $('shelf').hidden = !books.length;
+    // The free slots drawn as their outlines: how many more fit, at a
+    // glance; one pressed opens a book. A number before each, 1 to 3.
+    const free = Array.from({ length: Math.max(0, slots - books.length) }, freeSlot);
+    $('shelf').querySelector('.cards').replaceChildren(...books.map(card), ...free);
+    $('shelf').querySelectorAll('.slot').forEach((number, at) => { number.textContent = String(at + 1); });
+}
+
+/// A free slot: its outline, a quiet word; pressed, it opens a book.
+function freeSlot() {
+    const node = $('bookCard').content.firstElementChild.cloneNode(true);
+    node.classList.add('free');
+    node.querySelector('.forget').remove();
+    const door = node.querySelector('.book');
+    door.querySelector('.name').textContent = t('Free slot');
+    door.querySelector('.how-far').remove();
+    door.setAttribute('aria-label', `${t('Free slot')}: ${t('Open a book…')}`);
+    door.addEventListener('click', () => $('file').click());
+    return node;
+}
+
+/// A kept book's card: its cover (or the band's pattern and its letter),
+/// title, author, how far; a ✕ that lets it go.
+function card(record) {
+    const node = $('bookCard').content.firstElementChild.cloneNode(true);
+    const door = node.querySelector('.book');
     const read = JSON.parse(localStorage.getItem('nano.position.' + record.key) || 'null')?.progress || 0;
-    door.querySelector('.label').textContent = t('Continue reading');
     door.querySelector('.name').textContent = record.title;
-    // The author where the record has one (kept since 13.11; an older one
-    // gets it when the book is opened again).
     const author = door.querySelector('.author');
     author.textContent = record.author || '';
     author.hidden = !record.author;
     // The first letter or digit of any script: «\W» is ASCII's idea of a
     // word and took a Cyrillic title whole.
     door.querySelector('.initial').textContent = [...(record.title || '').replace(/^[^\p{L}\p{N}]+/u, '')][0] || '';
+    const face = door.querySelector('.cover');
+    if (record.cover?.bytes) {
+        const url = URL.createObjectURL(new Blob([record.cover.bytes], { type: record.cover.type }));
+        coverURLs.push(url);
+        face.classList.add('picture');
+        face.style.backgroundImage = `url("${url}")`;
+    }
     door.querySelector('.share').textContent = `${Math.round(read * 100)}%`;
     door.style.setProperty('--read', `${(read * 100).toFixed(1)}%`);
     door.setAttribute('aria-label', `${t('Continue reading')}: ${record.title}${record.author ? ', ' + record.author : ''}`);
-    door.onclick = () => reopen(record);
+    door.dataset.key = record.key;
+    door.addEventListener('click', () => reopen(record));
+    const remove = node.querySelector('.forget');
+    remove.setAttribute('aria-label', t('Remove from WebReader'));
+    remove.title = t('Remove from WebReader');
+    remove.addEventListener('click', async () => { await forgetBook(record.key); offerShelf(); $('open').focus(); });
+    return node;
+}
+
+/// A cover as a small JPEG for the card (240 pixels tall), its bytes and
+/// type; null where there is none or it will not draw (an SVG, say).
+async function thumbnail(url) {
+    if (!url) return null;
+    try {
+        const bitmap = await createImageBitmap(await (await fetch(url)).blob());
+        const height = 240, width = Math.max(1, Math.min(480, Math.round((bitmap.width * height) / bitmap.height)));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
+        bitmap.close();
+        const small = await new Promise((done) => canvas.toBlob(done, 'image/jpeg', 0.85));
+        return small ? { bytes: await small.arrayBuffer(), type: 'image/jpeg' } : null;
+    } catch {
+        return null;
+    }
+}
+
+/// A book let go, and all that was kept of it — the file, the place, the
+/// choices made for it; the books after it move up a slot.
+async function forgetBook(key) {
+    for (const kept of ['position', 'pdf', 'direction', 'strip']) localStorage.removeItem(`nano.${kept}.${key}`);
+    if (localStorage.getItem('nano.open') === key) localStorage.removeItem('nano.open');
+    await forget(key);
+}
+
+/// Room for a book: it is kept already, or a slot is free, or the reader
+/// lets one of the three go. False when they keep them all.
+async function makeRoom(key, name) {
+    if (await hasRoom(key)) return true;
+    const chosen = await askRoom(await shelf(), name);
+    if (!chosen) return false;
+    await forgetBook(chosen);
+    return true;
+}
+
+/// The three books, a row each, and the question: which one goes to make
+/// room for this one? Resolves with its key, or null when none does.
+function askRoom(books, name) {
+    return new Promise((done) => {
+        const ask = $('shelfAsk');
+        const make = (tag, attributes = {}, text) => Object.assign(document.createElement(tag), attributes, text === undefined ? {} : { textContent: text });
+        const urls = [];
+        let answer = null;
+        const rows = make('div', { className: 'rows' });
+        for (const record of books) {
+            const face = make('span', { className: 'face' });
+            if (record.cover?.bytes) {
+                const url = URL.createObjectURL(new Blob([record.cover.bytes], { type: record.cover.type }));
+                urls.push(url);
+                face.style.backgroundImage = `url("${url}")`;
+            }
+            const what = make('span', { className: 'what' });
+            what.append(make('b', {}, record.title), make('span', {}, record.author || ''));
+            const remove = make('button', { type: 'button' }, t('Replace'));
+            remove.dataset.key = record.key;
+            remove.addEventListener('click', () => { answer = record.key; ask.close(); });
+            const row = make('div', { className: 'row' });
+            row.append(face, what, remove);
+            rows.append(row);
+        }
+        const cancel = make('button', { type: 'button', className: 'quiet' }, t('Cancel'));
+        cancel.addEventListener('click', () => ask.close());
+        const footer = make('footer');
+        footer.append(cancel);
+        ask.replaceChildren(
+            make('h2', {}, t('Three books are kept')),
+            make('p', {}, t('WebReader keeps three books. To open {name}, choose the one it replaces: that book’s file and place are removed.').replace('{name}', `«${name}»`)),
+            rows,
+            footer,
+        );
+        ask.setAttribute('aria-label', t('Three books are kept'));
+        ask.addEventListener('close', () => { for (const url of urls) URL.revokeObjectURL(url); done(answer); }, { once: true });
+        ask.showModal();
+        ask.focus();
+    });
 }
 
 $('open').addEventListener('click', () => $('file').click());
@@ -843,6 +969,8 @@ $('install').querySelector('.hide').addEventListener('click', () => { localStora
 /// A new version took over while the page was open: offered at home, by
 /// the version's number — never over a page being read.
 $('update').addEventListener('click', () => location.reload());
+/// Asks for a new version if it has not lately; set once the worker is in.
+let updateCheck = () => {};
 
 // Without the network too, once it has been here; an installed reader
 // opens the files the system hands it.
@@ -850,14 +978,19 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     const hadWorker = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadWorker) $('update').hidden = false; });
     navigator.serviceWorker.register('sw.js').then((registration) => {
-        // An installed reader can stay open for days: it asks again as it
-        // comes back, at most every half an hour.
+        // A tab or an installed reader can stay open for days, and the
+        // browser looks for a new worker only on a page load. So the page
+        // asks too (the worker's file alone, a 304 when nothing changed):
+        // back on the tab after five minutes, back at home from a book,
+        // and every half an hour while it is on screen.
         let asked = Date.now();
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState !== 'visible' || Date.now() - asked < 30 * 60 * 1000) return;
+        updateCheck = (after = 5 * 60 * 1000) => {
+            if (Date.now() - asked < after) return;
             asked = Date.now();
             registration.update().catch(() => {});
-        });
+        };
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') updateCheck(); });
+        setInterval(() => { if (document.visibilityState === 'visible') updateCheck(30 * 60 * 1000); }, 5 * 60 * 1000);
     }).catch(() => {});
 }
 
@@ -892,15 +1025,19 @@ if ('launchQueue' in window) {
 
 // A book shared to the reader opens; else a book open when the page went
 // away opens again; else home offers it.
-takeShared().then((took) => (took ? null : lastBook())).then((record) => {
-    if (book) return;
-    if (record && localStorage.getItem('nano.open') === record.key) reopen(record);
-    else offerLast();
+takeShared().then((took) => (took ? null : shelf())).then((books) => {
+    if (book || !books) return;
+    const open = books.find((record) => record.key === localStorage.getItem('nano.open'));
+    if (open) reopen(open);
+    else offerShelf();
 });
 
 // For the tests and the console.
 window.nano = {
     settings, messages, errors, apply, openSample, openFile, openLink, show, close,
+    /// The first slot freed when the three are full: tests that open more
+    /// than three books in a row.
+    async freeSlot() { const books = await shelf(); if (books.length >= 3) await forgetBook(books[0].key); },
     payload: () => payload(settings, book, frame.clientWidth || innerWidth),
     get book() { return book; }, get restored() { return restored; },
 };

@@ -32,15 +32,24 @@
             </div>
             <p class="notes"><span id="formats"></span><br><span data-i18n="Your books stay on your device.">Your books stay on your device.</span><span id="install" hidden><br><span class="how"></span><button type="button" class="hide" data-i18n-label="Hide">×</button></span></p>
             <p id="problem" role="alert"></p>
-            <button id="resume" type="button" hidden>
-                <span class="cover"><span class="initial"></span></span>
-                <span class="words">
-                    <span class="label"></span>
-                    <span class="name"></span>
-                    <span class="author" hidden></span>
-                    <span class="how-far"><span class="progress-line"><i></i></span><span class="share"></span></span>
-                </span>
-            </button>
+            <section id="shelf" class="shelf" hidden>
+                <p class="label" data-i18n="Continue reading">Continue reading</p>
+                <div class="cards"></div>
+            </section>
+            <template id="bookCard">
+                <div class="resume">
+                    <button type="button" class="book">
+                        <span class="slot" aria-hidden="true"></span>
+                        <span class="cover"><span class="initial"></span></span>
+                        <span class="words">
+                            <span class="name"></span>
+                            <span class="author" hidden></span>
+                            <span class="how-far"><span class="progress-line"><i></i></span><span class="share"></span></span>
+                        </span>
+                    </button>
+                    <button type="button" class="forget"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg></button>
+                </div>
+            </template>
             <input id="file" type="file" hidden>
             <ul id="samples"></ul>
         </main>
@@ -81,6 +90,7 @@
 
 <dialog id="panel" tabindex="-1" aria-label="Reading settings"></dialog>
 <dialog id="pdfAsk" tabindex="-1"></dialog>
+<dialog id="shelfAsk" class="ask" tabindex="-1"></dialog>
 <div id="busy" role="status" aria-live="polite" hidden><span class="ring" aria-hidden="true"></span><span class="words"></span></div>
 <script type="module" src="shell.js"></script>
 </body>

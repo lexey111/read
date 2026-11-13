@@ -19,17 +19,17 @@ const reader = [
 const apps = [
     {
         id: 'jr', name: 'JustReader', role: 'The nightstand', terms: 'Free', ground: '#f6efe5',
-        text: 'One book at a time: open a file, read it, close it. There is no library to look after, and the reader is complete.',
+        text: 'One book at a time: open a file, read it, close it. There is no library to look after, and the reader is full-fledged.',
         store: 'https://apps.apple.com/app/justreader/id6781187067',
     },
     {
         id: 'pr', name: 'PlainReader', role: 'The shelf', terms: 'Bought once', ground: '#f7e7d0',
-        text: 'A shelf with named, coloured dividers. Every book opens where you stopped, so several can be read at once. OPDS catalogues are built in.',
+        text: 'A shelf of up to 1000 books with named, coloured dividers. Every book opens where you stopped, so several can be read at once. OPDS catalogues are built in.',
         store: 'https://apps.apple.com/app/plainreader/id6801140208',
     },
     {
         id: 'cr', name: 'ContinuousReader', role: 'The library', terms: 'Bought once', ground: '#f4e4ca',
-        text: 'Folders, genres, series and a page for every author. Search through the full text of every book, and your place follows you from the Mac to the iPhone.',
+        text: 'Folders, genres, series and a page for every author. Full-text search through every book, and the library and your reading in sync across your devices.',
         store: 'https://apps.apple.com/app/continuousreader/id6783733436',
     },
 ];
