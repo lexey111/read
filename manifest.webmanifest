@@ -1,7 +1,7 @@
 {
   "name": "WebReader",
   "short_name": "WebReader",
-  "description": "A book reader in the browser: EPUB, FB2, CBZ, Markdown, TXT and HTML. Your books stay on your device.",
+  "description": "A book reader in the browser: EPUB, FB2, PDF, CBZ, Markdown, TXT and HTML. Your books stay on your device.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -19,6 +19,7 @@
       "accept": {
         "application/epub+zip": [".epub"],
         "application/x-fictionbook+xml": [".fb2"],
+        "application/pdf": [".pdf"],
         "application/vnd.comicbook+zip": [".cbz"],
         "text/markdown": [".md", ".markdown"],
         "text/plain": [".txt"],

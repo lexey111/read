@@ -10,6 +10,30 @@ export const news = [
         date: '2026-11-13',
         version: '1.8',
         title: {
+            en: 'PDF, as printed',
+            ru: 'PDF как напечатан',
+            uk: 'PDF як надруковано',
+            es: 'PDF, tal como se imprimió',
+            fr: 'Le PDF, tel qu’imprimé',
+            de: 'PDF, wie gedruckt',
+            'zh-Hans': 'PDF，保持原样排版',
+            ja: 'PDF を印刷どおりに',
+        },
+        text: {
+            en: 'A PDF opens page by page, laid out as it was printed. Pages of text take your palette’s colours, by day and by night; pictures keep their own. The contents come from the PDF itself. The first PDF needs the network once.',
+            ru: 'PDF открывается страницами, как его сверстали. Страницы с текстом берут цвета вашей палитры, днём и ночью, картинки остаются своими. Оглавление берётся из самого PDF. Первому PDF один раз нужна сеть.',
+            uk: 'PDF відкривається сторінками, як його зверстали. Сторінки з текстом беруть кольори вашої палітри, удень і вночі, зображення лишаються своїми. Зміст береться з самого PDF. Першому PDF один раз потрібна мережа.',
+            es: 'Un PDF se abre página a página, tal como se maquetó. Las páginas de texto toman los colores de tu paleta, de día y de noche; las imágenes conservan los suyos. El índice sale del propio PDF. El primer PDF necesita conexión una vez.',
+            fr: 'Un PDF s’ouvre page par page, tel qu’il a été mis en page. Les pages de texte prennent les couleurs de votre palette, le jour comme la nuit ; les images gardent les leurs. La table des matières vient du PDF lui-même. Le premier PDF a besoin du réseau une fois.',
+            de: 'Ein PDF öffnet sich Seite für Seite, so wie es gesetzt wurde. Textseiten nehmen die Farben Ihrer Palette an, bei Tag und bei Nacht; Bilder behalten ihre eigenen. Das Inhaltsverzeichnis kommt aus dem PDF selbst. Das erste PDF braucht einmal das Netz.',
+            'zh-Hans': 'PDF 按页打开，保持原有排版。文字页使用你的调色板颜色，白天和夜晚都是；图片保持原色。目录取自 PDF 本身。第一次打开 PDF 时需要联网一次。',
+            ja: 'PDF はページごとに、組まれたとおりに開きます。文字のページは昼も夜もパレットの色に、画像は元の色のままです。目次は PDF 自身のものを使います。最初の PDF だけ、一度ネット接続が必要です。',
+        },
+    },
+    {
+        date: '2026-11-13',
+        version: '1.8',
+        title: {
             en: 'WebReader opens',
             ru: 'WebReader открыт',
             uk: 'WebReader відкрито',
@@ -32,8 +56,9 @@ export const news = [
     },
 ];
 
-/// The newest entry's date: what «seen» is measured against.
-export const latest = news[0]?.date || '';
+/// What «seen» is measured against: the newest entry's date and the count,
+/// so a second entry on the same day is news too.
+export const latest = news.length ? `${news[0].date}.${news.length}` : '';
 
 const element = (tag, attributes = {}, ...children) => {
     const node = document.createElement(tag);

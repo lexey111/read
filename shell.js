@@ -199,6 +199,8 @@ async function show(next) {
     // As the reader does: the script, the settings, then the position.
     page.eval(engineSource);
     apply();
+    // A PDF draws its pages as they come near the screen.
+    book.attach?.(page);
     const saved = JSON.parse(localStorage.getItem('nano.position.' + book.key) || 'null') || { xpath: '', scrollY: 0, progress: 0 };
     page.PositionTracker.restorePosition(saved.xpath, 0, saved.scrollY, saved.progress);
     place.progress = saved.progress;
@@ -220,6 +222,7 @@ function close() {
     $('contents').hidden = true;
     if ($('panel').open) $('panel').close();
     if (!book) return;
+    book.release?.();
     for (const url of book.urls || []) URL.revokeObjectURL(url);
     book = null;
     frame.srcdoc = '';

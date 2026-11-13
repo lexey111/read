@@ -69,13 +69,23 @@ async function sizeOf(bytes, type) {
 /// white transparent and its black into the theme's ink.
 async function isInk(blob) {
     try {
+        const bitmap = await createImageBitmap(blob, { resizeWidth: 64, resizeHeight: 64, resizeQuality: 'medium' });
+        const ink = inkIn(bitmap);
+        bitmap.close();
+        return ink;
+    } catch {
+        return false;
+    }
+}
+
+/// The same test on anything a canvas can draw: a picture, a drawn page.
+export function inkIn(source) {
+    try {
         const side = 64;
-        const bitmap = await createImageBitmap(blob, { resizeWidth: side, resizeHeight: side, resizeQuality: 'medium' });
         const canvas = document.createElement('canvas');
         canvas.width = canvas.height = side;
         const context = canvas.getContext('2d', { willReadFrequently: true });
-        context.drawImage(bitmap, 0, 0, side, side);
-        bitmap.close();
+        context.drawImage(source, 0, 0, side, side);
         const pixels = context.getImageData(0, 0, side, side).data;
         let sum = 0, saturated = 0, counted = 0;
         for (let i = 0; i < pixels.length; i += 4) {
@@ -105,7 +115,7 @@ function comicInfo(text) {
 }
 
 /// "Vinland_Saga_v01 (digital)" → "Vinland Saga v01".
-const nameFromFile = (name) => name.replace(/\.[^.]+$/, '').replace(/\.(cbz|zip)$/i, '').replace(/[_]+/g, ' ').replace(/\s*[([][^)\]]*[)\]]\s*/g, ' ').replace(/\s+/g, ' ').trim() || 'Pictures';
+export const nameFromFile = (name) => name.replace(/\.[^.]+$/, '').replace(/\.(cbz|zip)$/i, '').replace(/[_]+/g, ' ').replace(/\s*[([][^)\]]*[)\]]\s*/g, ' ').replace(/\s+/g, ' ').trim() || 'Pictures';
 
 export async function convertPages(entries, name) {
     const names = [...entries.keys()].filter(isPicture).sort(readingOrder);
