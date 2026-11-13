@@ -32,7 +32,11 @@ self.addEventListener('fetch', (event) => {
     const request = event.request;
     const url = new URL(request.url);
     if (request.method !== 'GET' || url.origin !== location.origin || url.pathname.includes('/samples/')) return;
-    event.respondWith(fetch(request)
+    // Asked of the server every time (a 304 when nothing changed): the
+    // host lets a browser keep files for ten minutes, and a new version
+    // waited that long. A page's own request can't be copied with options.
+    const fresh = request.mode === 'navigate' ? new Request(request.url, { cache: 'no-cache' }) : new Request(request, { cache: 'no-cache' });
+    event.respondWith(fetch(fresh)
         .then((response) => {
             if (response.ok) {
                 const copy = response.clone();
