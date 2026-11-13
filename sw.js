@@ -8,7 +8,7 @@
 // Stamped by scripts/stamp-version.sh with every commit: a new version is
 // a new worker, which keeps its files under its own name, drops the old
 // ones and tells the open pages (`controllerchange`).
-const VERSION = '1.8.26';
+const VERSION = '1.8.30';
 const KEEP = 'webreader-' + VERSION;
 // pdf.js changes with its own number, not ours: kept across versions, so
 // a PDF opens offline after an update too. The package's version.
@@ -17,8 +17,8 @@ const SHARED = 'webreader-shared';
 const SHELL = [
     './', 'index.html', 'shell.css', 'manifest.webmanifest',
     'shell.js', 'model.js', 'panel.js', 'progress.js', 'apps.js', 'ornament.js', 'version.js', 'news.js', 'i18n.js', 'store.js',
-    'book.js', 'zip.js', 'bytes.js', 'sanitize.js', 'template.js',
-    'epub.js', 'fb2.js', 'markdown.js', 'text.js', 'pages.js', 'pdf.js', 'pdftext.js',
+    'book.js', 'link.js', 'zip.js', 'bytes.js', 'sanitize.js', 'template.js',
+    'epub.js', 'fb2.js', 'markdown.js', 'text.js', 'pages.js', 'pdf.js', 'pdftext.js', 'mobi.js',
     'engine/PositionTracker.js',
     'engine/paper/lined.png', 'engine/paper/squared.png', 'engine/paper/sand.png',
     'engine/paper/kraft.png', 'engine/paper/fibre.png', 'engine/paper/laid.png',

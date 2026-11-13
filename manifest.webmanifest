@@ -1,7 +1,7 @@
 {
   "name": "WebReader",
   "short_name": "WebReader",
-  "description": "A book reader in the browser: EPUB, FB2, PDF, CBZ, Markdown, TXT and HTML. Your books stay on your device.",
+  "description": "A book reader in the browser: EPUB, FB2, MOBI, AZW3, PDF, CBZ, Markdown, TXT and HTML. Your books stay on your device.",
   "id": "./",
   "start_url": "./?app",
   "scope": "./",
@@ -20,6 +20,7 @@
       "accept": {
         "application/epub+zip": [".epub"],
         "application/x-fictionbook+xml": [".fb2"],
+        "application/x-mobipocket-ebook": [".mobi", ".azw3", ".azw", ".prc"],
         "application/pdf": [".pdf"],
         "application/vnd.comicbook+zip": [".cbz"],
         "text/markdown": [".md", ".markdown"],
@@ -37,8 +38,8 @@
       "files": [
         {
           "name": "book",
-          "accept": [".epub", ".fb2", ".pdf", ".cbz", ".zip", ".md", ".markdown", ".txt", ".html", ".htm",
-            "application/epub+zip", "application/pdf", "application/zip", "application/x-zip-compressed",
+          "accept": [".epub", ".fb2", ".mobi", ".azw3", ".pdf", ".cbz", ".zip", ".md", ".markdown", ".txt", ".html", ".htm",
+            "application/epub+zip", "application/x-mobipocket-ebook", "application/pdf", "application/zip", "application/x-zip-compressed",
             "application/vnd.comicbook+zip", "application/x-fictionbook+xml", "text/plain", "text/markdown", "text/html",
             "application/octet-stream"]
         }

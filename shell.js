@@ -7,6 +7,7 @@
 // this file is that reader.
 
 import { convert, formats, accept } from './book.js';
+import { download, linkIn } from './link.js';
 import { load, save, defaults, payload, theme, mix, direction, pictureStrip, turning, paged, onSystemLight } from './model.js';
 import { renderApps } from './apps.js';
 import { ornament } from './ornament.js';
@@ -537,7 +538,7 @@ async function openFile(file, { keep = true } = {}) {
         if (keep) {
             // The bytes, not the File: Safari's private windows keep no
             // Blob in IndexedDB, and an ArrayBuffer is kept everywhere.
-            keepLast({ key, name: file.name, title: converted.title, bytes: await file.arrayBuffer() });
+            keepLast({ key, name: file.name, title: converted.title, author: converted.author || '', bytes: await file.arrayBuffer() });
             // Asked once a book is read: the browser keeps the place and
             // the book through its own clean-ups.
             navigator.storage?.persist?.().catch(() => {});
@@ -548,6 +549,33 @@ async function openFile(file, { keep = true } = {}) {
         $('problem').textContent = problem(error.message || String(error));
     }
 }
+
+/// A book from a link, pasted or dropped on the home: downloaded when the
+/// site lets the page have it, then opened as any file.
+async function openLink(url) {
+    $('problem').textContent = '';
+    busy(t('Downloading…'));
+    try {
+        const file = await download(url, (received, total) => busy(total
+            ? `${t('Downloading…')} ${Math.round((received / total) * 100)}%`
+            : `${t('Downloading…')} ${(received / 1048576).toFixed(1)} ${t('MB')}`));
+        await openFile(file);
+    } catch (error) {
+        busy(null);
+        $('problem').textContent = problem(error.message || String(error));
+    }
+}
+
+// A link pasted on the home opens, as a link or a file dropped does. No
+// door shows it (user, 13.11): few sites let a page have their files, so
+// a field offered for every link would fail more often than not.
+addEventListener('paste', (event) => {
+    if (book || $('home').hidden || /^(input|textarea)$/i.test(event.target.tagName || '')) return;
+    const url = linkIn(event.clipboardData?.getData('text'));
+    if (!url) return;
+    event.preventDefault();
+    openLink(url.href);
+});
 
 /// Opening takes a moment for a large book or a PDF: a spinner past 0.2 s
 /// (the family's rule), with the PDF's progress, gone once the page stands
@@ -654,10 +682,17 @@ async function offerLast() {
     const read = JSON.parse(localStorage.getItem('nano.position.' + record.key) || 'null')?.progress || 0;
     door.querySelector('.label').textContent = t('Continue reading');
     door.querySelector('.name').textContent = record.title;
-    door.querySelector('.initial').textContent = [...(record.title || '').replace(/^\W+/u, '')][0] || '';
+    // The author where the record has one (kept since 13.11; an older one
+    // gets it when the book is opened again).
+    const author = door.querySelector('.author');
+    author.textContent = record.author || '';
+    author.hidden = !record.author;
+    // The first letter or digit of any script: «\W» is ASCII's idea of a
+    // word and took a Cyrillic title whole.
+    door.querySelector('.initial').textContent = [...(record.title || '').replace(/^[^\p{L}\p{N}]+/u, '')][0] || '';
     door.querySelector('.share').textContent = `${Math.round(read * 100)}%`;
     door.style.setProperty('--read', `${(read * 100).toFixed(1)}%`);
-    door.setAttribute('aria-label', `${t('Continue reading')}: ${record.title}`);
+    door.setAttribute('aria-label', `${t('Continue reading')}: ${record.title}${record.author ? ', ' + record.author : ''}`);
     door.onclick = () => reopen(record);
 }
 
@@ -717,7 +752,10 @@ addEventListener('drop', (event) => {
     event.preventDefault();
     home.classList.remove('over');
     const file = event.dataTransfer.files[0];
-    if (file) openFile(file);
+    if (file) return openFile(file);
+    // A link dragged from another tab.
+    const url = linkIn(event.dataTransfer.getData('text/uri-list') || event.dataTransfer.getData('text/plain'));
+    if (url) openLink(url.href);
 });
 
 onSystemLight(apply);
@@ -862,7 +900,7 @@ takeShared().then((took) => (took ? null : lastBook())).then((record) => {
 
 // For the tests and the console.
 window.nano = {
-    settings, messages, errors, apply, openSample, openFile, show, close,
+    settings, messages, errors, apply, openSample, openFile, openLink, show, close,
     payload: () => payload(settings, book, frame.clientWidth || innerWidth),
     get book() { return book; }, get restored() { return restored; },
 };

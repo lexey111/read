@@ -8,15 +8,18 @@ import { convertText, convertHTML } from './text.js';
 import { convertMarkdown } from './markdown.js';
 import { convertPages, looksLikePictureBook } from './pages.js';
 import { convertPDF, isPDF } from './pdf.js';
+import { convertMOBI, isMOBI } from './mobi.js';
 
-export const formats = 'EPUB, FB2, PDF, CBZ, Markdown, TXT, HTML and their ZIPs';
-export const accept = '.epub,.fb2,.pdf,.cbz,.zip,.md,.markdown,.txt,.html,.htm,.xhtml,application/epub+zip,application/pdf';
+export const formats = 'EPUB, FB2, MOBI, AZW3, PDF, CBZ, Markdown, TXT, HTML and their ZIPs';
+export const accept = '.epub,.fb2,.mobi,.azw3,.azw,.prc,.pdf,.cbz,.zip,.md,.markdown,.txt,.html,.htm,.xhtml,application/epub+zip,application/x-mobipocket-ebook,application/pdf';
 
 const isMarkdown = (name) => /\.(md|markdown|mdown|mkd)$/i.test(name);
 const isHTML = (name) => /\.x?html?$/i.test(name);
 
 function single(bytes, name, options = {}) {
     if (isPDF(bytes, name)) return convertPDF(bytes, name, { mode: options.pdf, progress: options.progress });
+    // A Kindle book: a Palm database of type BOOKMOBI.
+    if (isMOBI(bytes)) return convertMOBI(bytes, name);
     // FictionBook by its root element, wherever the declaration puts it
     // (the zero bytes of a UTF-16 file are dropped for the look).
     const head = new TextDecoder('latin1').decode(bytes.subarray(0, 65536)).replace(/\0/g, '');
@@ -43,7 +46,7 @@ export async function convert(buffer, name = '', options = {}) {
     if (entries.has('META-INF/container.xml')) return convertEPUB(entries);
     const names = [...entries.keys()];
     if (looksLikePictureBook(names)) return convertPages(entries, name);
-    const books = names.filter((entry) => /\.(fb2|pdf|md|markdown|txt|x?html?)$/i.test(entry) && !entry.includes('__MACOSX') && !entry.split('/').pop().startsWith('.'));
+    const books = names.filter((entry) => /\.(fb2|pdf|mobi|azw3|azw|prc|md|markdown|txt|x?html?)$/i.test(entry) && !entry.includes('__MACOSX') && !entry.split('/').pop().startsWith('.'));
     if (books.length === 1) {
         const inner = books[0].split('/').pop();
         return single(await entries.get(books[0])(), inner, options);
