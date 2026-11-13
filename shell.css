@@ -311,6 +311,36 @@ button.quiet:hover { color: var(--ink); background: var(--key); }
 #contents button:hover { background: var(--key); }
 #contents button.chosen { background: var(--key-hover); font-weight: 600; }
 
+/* MARK: Opening: a spinner once it takes a while */
+
+#busy {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 50;
+    display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-radius: 14px;
+    background: var(--surface); color: var(--ink); box-shadow: var(--shadow), 0 0 0 1px var(--line);
+    font-size: 14px; font-variant-numeric: tabular-nums; pointer-events: none; animation: fade 0.18s ease-out;
+}
+#busy[hidden] { display: none; }
+#busy .ring { width: 18px; height: 18px; box-sizing: border-box; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--ink); animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { #busy .ring { animation-duration: 2.4s; } }
+
+/* MARK: A PDF with text: read as text or as pictures? */
+
+#pdfAsk {
+    width: min(480px, calc(100vw - 32px)); box-sizing: border-box; padding: 28px 32px 22px;
+    border: 0; border-radius: 22px; background: var(--surface); color: var(--ink);
+    box-shadow: var(--shadow), 0 0 0 1px var(--line);
+}
+#pdfAsk:focus { outline: none; }
+#pdfAsk[open] { animation: rise 0.18s ease-out; }
+#pdfAsk::backdrop { background: rgba(0, 0, 0, 0.12); animation: fade 0.18s ease-out; }
+#pdfAsk h2 { margin: 0 0 12px; font: 600 19px/1.2 Georgia, serif; letter-spacing: -0.005em; }
+#pdfAsk p { margin: 0 0 10px; line-height: 1.5; }
+#pdfAsk .segmented { margin: 8px 0 14px; }
+#pdfAsk .note { font-size: 12px; color: var(--faint); }
+#pdfAsk footer { display: flex; justify-content: flex-end; margin-top: 18px; }
+#pdfAsk.working .segmented { opacity: 0.5; pointer-events: none; }
+
 /* MARK: The settings window */
 
 #panel {

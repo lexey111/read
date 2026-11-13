@@ -5,11 +5,16 @@
 // time, and four hundred pages drawn up front are a minute's wait. So a
 // page is drawn here when it comes near the screen, at the size it is
 // shown, and let go when it is far behind. pdf.js comes with the first
-// PDF opened (the service worker keeps it after that). The text layer,
-// for a reflowed PDF as the apps make, is a step of its own (WebReader #1).
+// PDF opened (the service worker keeps it after that).
+//
+// A PDF with a text layer is read as text by default (`pdftext.js`, the
+// apps' rules): it takes the reader's type, columns and palette. The
+// apps' rule chooses — text where most pages carry text, pictures for a
+// scan — and the reader can turn one book either way (`mode`).
 
-import { pagesPage } from './template.js';
+import { pagesPage, page as textPage } from './template.js';
 import { inkIn, nameFromFile } from './pages.js';
+import { readText, sampleText, hasTextLayer, html as textHTML } from './pdftext.js';
 
 const base = new URL('./vendor/pdfjs/', import.meta.url).href;
 let library = null;
@@ -49,7 +54,8 @@ function described(info) {
 }
 
 /// The outline's first level as the book's contents — under the book's own
-/// title when the outline is that one entry with the chapters inside.
+/// title when the outline is that one entry with the chapters inside. Each
+/// with its page, 1-based.
 async function contents(doc) {
     try {
         let items = await doc.getOutline();
@@ -59,7 +65,7 @@ async function contents(doc) {
         for (const item of items.slice(0, 500)) {
             const index = await pageOf(doc, item.dest);
             const title = (item.title || '').trim();
-            if (index != null && title) chapters.push({ title, id: '_cr_p' + (index + 1) });
+            if (index != null && title) chapters.push({ title, page: index + 1 });
         }
         return chapters;
     } catch {
@@ -80,7 +86,10 @@ async function pageOf(doc, dest) {
 /// An empty picture of the page's shape, until the page is drawn.
 const blank = (width, height) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}"/>`);
 
-export async function convertPDF(bytes, name) {
+/// `mode`: 'text' or 'pages' as the reader chose for this book; none, the
+/// document decides and the reader is asked (`pdf.asked`). `progress(done,
+/// total)` is told as the text is read.
+export async function convertPDF(bytes, name, { mode, progress } = {}) {
     const lib = await pdfjs();
     let doc, loading;
     try {
@@ -102,6 +111,30 @@ export async function convertPDF(bytes, name) {
         throw new Error('This PDF could not be read.');
     }
 
+    const [meta, outline, layout, preferences] = await Promise.all([
+        doc.getMetadata().catch(() => ({})),
+        contents(doc),
+        doc.getPageLayout().catch(() => ''),
+        doc.getViewerPreferences().catch(() => null),
+    ]);
+    const { title, authors } = described(meta.info);
+    // Text for a book: a text layer worth the name over eight pages and
+    // more. A form, an invoice, a short paper keeps its layout — read as
+    // text it came out as a heap of lines with «chapters» (user, 13.11).
+    // Offered at all where there is any text; a scan has none.
+    const sample = await sampleText(doc).catch(() => ({ pages: doc.numPages, pagesWithText: 0, characters: 0 }));
+    const readable = sample.pagesWithText > 0;
+    const given = mode === 'text' || mode === 'pages';
+    const chosen = given ? mode : hasTextLayer(sample) && doc.numPages >= 8 ? 'text' : 'pages';
+    const asked = !given && readable;
+    if (chosen === 'text' && readable) {
+        const book = await asText(doc, { title, authors, outline, name, language: meta.info?.Language, progress });
+        if (book) {
+            loading.destroy();
+            return { ...book, pdf: { mode: 'text', text: true, asked } };
+        }
+    }
+
     // Every page's size, nothing drawn: the script lays the book out by them.
     const sizes = [];
     for (let start = 1; start <= doc.numPages; start += 32) {
@@ -115,13 +148,7 @@ export async function convertPDF(bytes, name) {
         sizes.push(...await Promise.all(batch));
     }
 
-    const [meta, chapters, layout, preferences] = await Promise.all([
-        doc.getMetadata().catch(() => ({})),
-        contents(doc),
-        doc.getPageLayout().catch(() => ''),
-        doc.getViewerPreferences().catch(() => null),
-    ]);
-    const { title, authors } = described(meta.info);
+    const chapters = outline.map((chapter) => ({ title: chapter.title, id: '_cr_p' + chapter.page }));
     // The document's own word on its spreads (#1027): TwoPageRight opens on
     // page 1 alone, as a bound book; most PDFs say nothing and pair 1 with 2.
     const firstAlone = ['TwoPageRight', 'TwoColumnRight'].includes(layout);
@@ -150,9 +177,43 @@ export async function convertPDF(bytes, name) {
         title: shown, author: authors.join(', '), language: '',
         rightToLeft, chapters, urls: [],
         pages: { rtl: rightToLeft, strip: false, firstAlone },
+        pdf: { mode: 'pages', text: readable, asked },
         html: pagesPage(body.innerHTML, shown),
         attach(view) { drawer?.stop(); drawer = drawPages(doc, view, sizes); },
         release() { drawer?.stop(); drawer = null; loading.destroy(); },
+    };
+}
+
+// MARK: - Text
+
+/// The book as text: the blocks in the family's page, the outline's entries
+/// on the blocks they point at (a heading on that page, else its first
+/// block), or the headings where the outline says nothing more than the
+/// title. Null with no text.
+async function asText(doc, { title, authors, outline, name, language, progress }) {
+    const { blocks, stats } = await readText(doc, {}, progress);
+    if (!stats.pagesWithText || !blocks.length) return null;
+    let chapters = [];
+    // An outline of one entry is the book's title, not its contents.
+    for (const entry of outline.length > 1 ? outline : []) {
+        let at = blocks.findIndex((block) => block.page === entry.page && block.kind !== 'paragraph' && block.kind !== 'note');
+        if (at < 0) at = blocks.findIndex((block) => block.page >= entry.page);
+        if (at < 0) continue;
+        if (blocks[at].kind === 'paragraph' || blocks[at].kind === 'note') blocks[at].anchor = true;
+        chapters.push({ title: entry.title, id: '_cr_b' + at });
+    }
+    // The headings as the contents only for a document with room for
+    // them: a page's large lines are not its sections.
+    if (!chapters.length && doc.numPages >= 3) {
+        const headings = blocks.map((block, at) => ({ block, at })).filter(({ block }) => block.kind === 'h1' || block.kind === 'h2');
+        if (headings.length >= 3) chapters = headings.map(({ block, at }) => ({ title: block.text.replace(/\n/g, ' '), id: '_cr_b' + at }));
+    }
+    const heading = blocks.find((block) => block.kind === 'h1')?.text.replace(/\n/g, ' ');
+    const shown = title || heading || nameFromFile(name);
+    const lang = typeof language === 'string' ? language.trim().toLowerCase() : '';
+    return {
+        title: shown, author: authors.join(', '), language: lang, chapters,
+        html: textPage(textHTML(blocks), shown, lang, '.footnote { font-size: 0.85em; opacity: 0.8; text-indent: 0; }'),
     };
 }
 

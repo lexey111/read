@@ -56,6 +56,14 @@ const ru = {
     'To install: File → Add to Dock': 'Установить: «Файл» → «Добавить в Dock»',
     'Hide': 'Скрыть',
     'Feedback': 'Написать нам',
+    'Read as': 'Читать как',
+    'Opening…': 'Открывается…',
+    'Reading the PDF…': 'Читается PDF…',
+    'A PDF with text': 'PDF с текстом',
+    'It can be read as text, in your typeface, size and colours, or as pictures: the pages as they were printed.': 'Его можно читать текстом, вашим шрифтом, размером и цветами, или картинками: страницы, как их напечатали.',
+    'Text suits a book. Pictures suit a form, a magazine, anything with tables or a layout of its own.': 'Текст подходит книге. Картинки подходят бланку, журналу, всему, где таблицы или своя вёрстка.',
+    'You can change it at any time in the settings: Read as.': 'Это можно поменять в любой момент в настройках: «Читать как».',
+    'Read': 'Читать',
 };
 
 const uk = {
@@ -107,6 +115,14 @@ const uk = {
     'To install: File → Add to Dock': 'Встановити: «Файл» → «Додати в Dock»',
     'Hide': 'Сховати',
     'Feedback': 'Написати нам',
+    'Read as': 'Читати як',
+    'Opening…': 'Відкривається…',
+    'Reading the PDF…': 'Читається PDF…',
+    'A PDF with text': 'PDF із текстом',
+    'It can be read as text, in your typeface, size and colours, or as pictures: the pages as they were printed.': 'Його можна читати текстом, вашим шрифтом, розміром і кольорами, або картинками: сторінки, як їх надрукували.',
+    'Text suits a book. Pictures suit a form, a magazine, anything with tables or a layout of its own.': 'Текст пасує книзі. Картинки пасують бланку, журналу, усьому, де таблиці чи своя верстка.',
+    'You can change it at any time in the settings: Read as.': 'Це можна змінити будь-коли в налаштуваннях: «Читати як».',
+    'Read': 'Читати',
 };
 
 const es = {
@@ -158,6 +174,14 @@ const es = {
     'To install: File → Add to Dock': 'Para instalar: Archivo → Añadir al Dock',
     'Hide': 'Ocultar',
     'Feedback': 'Escríbenos',
+    'Read as': 'Leer como',
+    'Opening…': 'Abriendo…',
+    'Reading the PDF…': 'Leyendo el PDF…',
+    'A PDF with text': 'Un PDF con texto',
+    'It can be read as text, in your typeface, size and colours, or as pictures: the pages as they were printed.': 'Se puede leer como texto, con tu tipografía, tamaño y colores, o como imágenes: las páginas tal como se imprimieron.',
+    'Text suits a book. Pictures suit a form, a magazine, anything with tables or a layout of its own.': 'El texto va bien para un libro. Las imágenes, para un formulario, una revista, todo lo que tenga tablas o su propia maquetación.',
+    'You can change it at any time in the settings: Read as.': 'Puedes cambiarlo cuando quieras en los ajustes: Leer como.',
+    'Read': 'Leer',
 };
 
 const fr = {
@@ -209,6 +233,14 @@ const fr = {
     'To install: File → Add to Dock': 'Pour installer : Fichier → Ajouter au Dock',
     'Hide': 'Masquer',
     'Feedback': 'Nous écrire',
+    'Read as': 'Lire comme',
+    'Opening…': 'Ouverture…',
+    'Reading the PDF…': 'Lecture du PDF…',
+    'A PDF with text': 'Un PDF avec du texte',
+    'It can be read as text, in your typeface, size and colours, or as pictures: the pages as they were printed.': 'Il peut se lire en texte, avec votre police, votre taille et vos couleurs, ou en images : les pages telles qu’imprimées.',
+    'Text suits a book. Pictures suit a form, a magazine, anything with tables or a layout of its own.': 'Le texte convient à un livre. Les images conviennent à un formulaire, un magazine, tout ce qui a des tableaux ou sa propre mise en page.',
+    'You can change it at any time in the settings: Read as.': 'Vous pouvez changer cela à tout moment dans les réglages : Lire comme.',
+    'Read': 'Lire',
 };
 
 const de = {
@@ -260,6 +292,14 @@ const de = {
     'To install: File → Add to Dock': 'Installieren: Ablage → Zum Dock hinzufügen',
     'Hide': 'Ausblenden',
     'Feedback': 'Feedback',
+    'Read as': 'Lesen als',
+    'Opening…': 'Wird geöffnet…',
+    'Reading the PDF…': 'PDF wird gelesen…',
+    'A PDF with text': 'Ein PDF mit Text',
+    'It can be read as text, in your typeface, size and colours, or as pictures: the pages as they were printed.': 'Es lässt sich als Text lesen, in Ihrer Schrift, Größe und Ihren Farben, oder als Bilder: die Seiten, wie sie gedruckt wurden.',
+    'Text suits a book. Pictures suit a form, a magazine, anything with tables or a layout of its own.': 'Text passt zu einem Buch. Bilder passen zu einem Formular, einer Zeitschrift, allem mit Tabellen oder eigenem Layout.',
+    'You can change it at any time in the settings: Read as.': 'Das lässt sich jederzeit in den Einstellungen ändern: Lesen als.',
+    'Read': 'Lesen',
 };
 
 const zh = {
@@ -311,6 +351,14 @@ const zh = {
     'To install: File → Add to Dock': '安装方法：文件 → 添加到程序坞',
     'Hide': '隐藏',
     'Feedback': '发送反馈',
+    'Read as': '阅读方式',
+    'Opening…': '正在打开…',
+    'Reading the PDF…': '正在读取 PDF…',
+    'A PDF with text': '含文字的 PDF',
+    'It can be read as text, in your typeface, size and colours, or as pictures: the pages as they were printed.': '可以按文本阅读，使用你的字体、字号和颜色；也可以按图片阅读：页面保持印刷时的样子。',
+    'Text suits a book. Pictures suit a form, a magazine, anything with tables or a layout of its own.': '文本适合书籍。图片适合表单、杂志，以及带表格或特殊排版的文档。',
+    'You can change it at any time in the settings: Read as.': '随时可以在设置的“阅读方式”中更改。',
+    'Read': '阅读',
 };
 
 const ja = {
@@ -362,6 +410,14 @@ const ja = {
     'To install: File → Add to Dock': 'インストール：ファイル → Dock に追加',
     'Hide': '隠す',
     'Feedback': 'フィードバック',
+    'Read as': '読み方',
+    'Opening…': '開いています…',
+    'Reading the PDF…': 'PDF を読み込み中…',
+    'A PDF with text': 'テキストのある PDF',
+    'It can be read as text, in your typeface, size and colours, or as pictures: the pages as they were printed.': 'テキストとして、あなたの書体・サイズ・色で読むことも、画像として、印刷されたとおりのページで読むこともできます。',
+    'Text suits a book. Pictures suit a form, a magazine, anything with tables or a layout of its own.': 'テキストは本に向いています。画像は書類や雑誌、表や独自のレイアウトがあるものに向いています。',
+    'You can change it at any time in the settings: Read as.': '設定の「読み方」でいつでも変更できます。',
+    'Read': '読む',
 };
 
 /// The converters' messages, by their English words.

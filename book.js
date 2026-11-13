@@ -15,8 +15,8 @@ export const accept = '.epub,.fb2,.pdf,.cbz,.zip,.md,.markdown,.txt,.html,.htm,.
 const isMarkdown = (name) => /\.(md|markdown|mdown|mkd)$/i.test(name);
 const isHTML = (name) => /\.x?html?$/i.test(name);
 
-function single(bytes, name) {
-    if (isPDF(bytes, name)) return convertPDF(bytes, name);
+function single(bytes, name, options = {}) {
+    if (isPDF(bytes, name)) return convertPDF(bytes, name, { mode: options.pdf, progress: options.progress });
     // FictionBook by its root element, wherever the declaration puts it
     // (the zero bytes of a UTF-16 file are dropped for the look).
     const head = new TextDecoder('latin1').decode(bytes.subarray(0, 65536)).replace(/\0/g, '');
@@ -31,9 +31,11 @@ function single(bytes, name) {
     throw new Error(`This reader opens ${formats}.`);
 }
 
-export async function convert(buffer, name = '') {
+/// `options.pdf`: how a PDF is read, as the reader chose for this book;
+/// `options.progress(done, total)`: a long read's steps.
+export async function convert(buffer, name = '', options = {}) {
     const bytes = new Uint8Array(buffer);
-    if (!(bytes[0] === 0x50 && bytes[1] === 0x4B)) return single(bytes, name);
+    if (!(bytes[0] === 0x50 && bytes[1] === 0x4B)) return single(bytes, name, options);
 
     // A zip: an EPUB by its container, a book of pictures by its contents,
     // else the one book inside.
@@ -44,7 +46,7 @@ export async function convert(buffer, name = '') {
     const books = names.filter((entry) => /\.(fb2|pdf|md|markdown|txt|x?html?)$/i.test(entry) && !entry.includes('__MACOSX') && !entry.split('/').pop().startsWith('.'));
     if (books.length === 1) {
         const inner = books[0].split('/').pop();
-        return single(await entries.get(books[0])(), inner);
+        return single(await entries.get(books[0])(), inner, options);
     }
     if (books.length > 1) throw new Error('This archive holds several books. Unpack it and open one.');
     throw new Error('No book in this archive.');

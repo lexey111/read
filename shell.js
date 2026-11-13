@@ -77,6 +77,8 @@ function receive(name, body) {
     case 'positionRestored':
         restored = true;
         frame.style.opacity = '1';
+        busy(null);
+        if (book?.pdf?.asked && !$('pdfAsk').open) askPDF();
         break;
     case 'toggleFullscreen':
         toggleFullscreen();
@@ -269,8 +271,9 @@ function context() {
     const pictures = !!book?.pages;
     const shown = Object.assign({}, settings, pictures
         ? { direction: direction(book), layout: pictureStrip(book) ? 'scroll' : 'pages', columns: settings.pagesColumns }
-        : { direction: direction(book), layout: paged(settings) ? 'pages' : 'scroll' });
-    return { pictures, shown };
+        : { direction: direction(book), layout: paged(settings) ? 'pages' : 'scroll' }, { pdf: book?.pdf?.mode });
+    // A PDF with text can be read either way; a scan only as pictures.
+    return { pictures, shown, pdf: !!book?.pdf?.text };
 }
 
 const panel = settingsPanel($('panel'), {
@@ -278,6 +281,7 @@ const panel = settingsPanel($('panel'), {
     context,
     onChange(setting, value) {
         if (value !== undefined) {
+            if (setting === 'pdf') return readPDFAs(value);
             if (setting === 'direction') {
                 if (book) localStorage.setItem('nano.direction.' + book.key, value);
             } else if (book?.pages && setting === 'layout') {
@@ -515,12 +519,21 @@ function showContents() {
 
 // MARK: - Doors
 
+/// The file the open book came from: a PDF is read again from it when the
+/// reader turns it from text to pictures or back.
+let openedFile = null;
+
 async function openFile(file, { keep = true } = {}) {
     $('problem').textContent = '';
+    busy(t('Opening…'));
     try {
-        const converted = await convert(await file.arrayBuffer(), file.name);
         const key = `${file.name}:${file.size}`;
+        const converted = await convert(await file.arrayBuffer(), file.name, {
+            pdf: localStorage.getItem('nano.pdf.' + key) || undefined,
+            progress: (done, total) => busy(`${t('Reading the PDF…')} ${Math.round((done / total) * 100)}%`),
+        });
         await show({ key, ...converted });
+        openedFile = file;
         if (keep) {
             // The bytes, not the File: Safari's private windows keep no
             // Blob in IndexedDB, and an ArrayBuffer is kept everywhere.
@@ -530,9 +543,90 @@ async function openFile(file, { keep = true } = {}) {
             navigator.storage?.persist?.().catch(() => {});
         }
     } catch (error) {
+        busy(null);
         close();
         $('problem').textContent = problem(error.message || String(error));
     }
+}
+
+/// Opening takes a moment for a large book or a PDF: a spinner past 0.2 s
+/// (the family's rule), with the PDF's progress, gone once the page stands
+/// where it was. `null` takes it away.
+let busyTimer = 0;
+function busy(words) {
+    const box = $('busy');
+    if (words == null) {
+        clearTimeout(busyTimer);
+        busyTimer = 0;
+        box.hidden = true;
+        return;
+    }
+    box.querySelector('.words').textContent = words;
+    if (box.hidden && !busyTimer) busyTimer = setTimeout(() => { busyTimer = 0; box.hidden = false; }, 200);
+}
+
+/// A PDF with text, opened for the first time: the reader chooses how to
+/// read it, the page behind turning as they try either; the choice is the
+/// book's from then on, and the settings keep the switch (Read as).
+function askPDF() {
+    const ask = $('pdfAsk');
+    const key = book.key;
+    const make = (tag, attributes, text) => Object.assign(document.createElement(tag), attributes, text === undefined ? {} : { textContent: text });
+    const choice = make('div', { className: 'segmented' });
+    choice.setAttribute('role', 'radiogroup');
+    for (const [value, label] of [['text', 'Text'], ['pages', 'Pictures']]) {
+        const option = make('button', { type: 'button' }, t(label));
+        option.dataset.value = value;
+        option.setAttribute('role', 'radio');
+        choice.append(option);
+    }
+    const mark = () => {
+        for (const option of choice.children) {
+            const chosen = option.dataset.value === book?.pdf?.mode;
+            option.classList.toggle('chosen', chosen);
+            option.setAttribute('aria-checked', String(chosen));
+        }
+    };
+    choice.addEventListener('click', async (event) => {
+        const value = event.target.closest('button')?.dataset.value;
+        if (!value || value === book?.pdf?.mode) return;
+        ask.classList.add('working');
+        await readPDFAs(value);
+        ask.classList.remove('working');
+        mark();
+    });
+    const done = make('button', { type: 'button', className: 'prominent' }, t('Read'));
+    done.addEventListener('click', () => ask.close());
+    const footer = make('footer');
+    footer.append(done);
+    ask.replaceChildren(
+        make('h2', {}, t('A PDF with text')),
+        make('p', {}, t('It can be read as text, in your typeface, size and colours, or as pictures: the pages as they were printed.')),
+        make('p', {}, t('Text suits a book. Pictures suit a form, a magazine, anything with tables or a layout of its own.')),
+        choice,
+        make('p', { className: 'note' }, t('You can change it at any time in the settings: Read as.')),
+        footer,
+    );
+    ask.setAttribute('aria-label', t('A PDF with text'));
+    mark();
+    ask.addEventListener('close', () => {
+        if (book?.key === key) localStorage.setItem('nano.pdf.' + key, book.pdf.mode);
+        frame.contentWindow?.focus();
+    }, { once: true });
+    ask.showModal();
+    ask.focus();
+}
+
+/// A PDF read the other way, text or pictures: again from its file, at the
+/// same share of the book (a place in one is no place in the other), the
+/// settings window open again over it.
+async function readPDFAs(mode) {
+    if (!book?.pdf || !openedFile || mode === book.pdf.mode) return;
+    const key = book.key, file = openedFile, again = $('panel').open;
+    localStorage.setItem('nano.pdf.' + key, mode);
+    localStorage.setItem('nano.position.' + key, JSON.stringify({ xpath: '', scrollY: 0, progress: place.progress || 0 }));
+    await openFile(file, { keep: false });
+    if (again && book) { $('panel').showModal(); $('panel').focus(); }
 }
 
 /// A book the family's converter already made — the development samples.
@@ -647,6 +741,28 @@ if (['127.0.0.1', 'localhost'].includes(location.hostname)) fetch('samples.json'
         $('samples').appendChild(row);
     }
 });
+
+// MARK: - Visits
+
+// Counted by Cloudflare Web Analytics on the published reader only (the
+// site's way, said on its privacy page): no cookies, nothing of the
+// reader's or the books'. The installed app starts at `?app` (the
+// manifest); the counter keeps paths and drops queries, so a launch
+// stands at /app while the counter reads the address, and the address
+// comes back as soon as it has (it follows pushState, not replaceState).
+if (location.hostname === 'read.continuousreader.app') {
+    const launch = new URLSearchParams(location.search).has('app');
+    const back = location.pathname + location.hash;
+    if (launch) history.replaceState(null, '', 'app' + location.hash);
+    const beacon = document.createElement('script');
+    beacon.type = 'module';
+    beacon.src = 'https://static.cloudflareinsights.com/beacon.min.js';
+    beacon.dataset.cfBeacon = JSON.stringify({ token: 'e5e3b28adbf4460b9970b23a53c78851' });
+    const restore = () => { if (launch) history.replaceState(null, '', back); };
+    beacon.addEventListener('load', restore);
+    beacon.addEventListener('error', restore);
+    document.head.appendChild(beacon);
+}
 
 // MARK: - The installed reader
 

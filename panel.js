@@ -86,6 +86,7 @@ export function settingsPanel(dialog, { settings, onChange, onReset, onLanguage,
 
     const layout = element('section', {},
         element('h3', { text: t('Layout') }),
+        row('Read as', segmented('pdf', [['text', 'Text'], ['pages', 'Pictures']]), { 'data-pdf': '' }),
         row('Reading', segmented('layout', [['scroll', 'Scroll'], ['pages', 'Pages']])),
         row('Columns', segmented('columns', [['1', '1'], ['2', '2'], ['3', '3'], ['4', '4']]), { 'data-turning': '' }),
         row('Page turn', segmented('turn', [['on', 'Slide'], ['off', 'At once']]), { 'data-turning': '' }),
@@ -175,7 +176,7 @@ export function settingsPanel(dialog, { settings, onChange, onReset, onLanguage,
     });
 
     function refresh() {
-        const { pictures, shown } = context();
+        const { pictures, shown, pdf } = context();
         for (const group of dialog.querySelectorAll('[data-setting]')) {
             for (const key of group.querySelectorAll('[data-value]')) {
                 const chosen = shown[group.dataset.setting] === key.dataset.value;
@@ -212,6 +213,7 @@ export function settingsPanel(dialog, { settings, onChange, onReset, onLanguage,
 
         for (const node of dialog.querySelectorAll('[data-text]')) node.hidden = pictures;
         for (const node of dialog.querySelectorAll('[data-pictures]')) node.hidden = !pictures;
+        for (const node of dialog.querySelectorAll('[data-pdf]')) node.hidden = !pdf;
         for (const node of dialog.querySelectorAll('[data-turning]')) node.hidden = shown.layout === 'scroll';
         dialog.querySelector('[data-grain]').hidden = settings.paper === 'none';
         for (const key of dialog.querySelectorAll('[data-setting="columns"] button')) key.hidden = pictures && +key.dataset.value > 2;
