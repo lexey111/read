@@ -166,7 +166,21 @@ button.quiet:hover { color: var(--ink); background: var(--key); }
 
 #home .bottom { padding-top: 40px; display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
 /* The version, in the corner, for whoever looks. */
-#home .version { font-size: 11px; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; color: var(--brand-soft); opacity: 0.55; }
+#home .version { font-size: 11px; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; color: var(--brand-soft); opacity: 0.6; text-decoration: none; transition: opacity 0.18s; }
+#home .version:hover { opacity: 1; }
+#home .version .dot { display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: var(--brand-accent); vertical-align: 1px; }
+#home .version .dot[hidden] { display: none; }
+
+/* What's new: the reader's own changelog. */
+#news { padding: 36px 0 24px; max-width: 40em; }
+#news .back { color: var(--brand-soft); text-decoration: none; font-size: 14px; font-weight: 500; }
+#news .back:hover { color: var(--brand-ink); }
+#news .eyebrow { margin: 32px 0 20px; }
+#news h2 { font: 300 clamp(44px, 5.6vw, 76px)/1.02 var(--serif); letter-spacing: -0.03em; margin: 0 0 28px; color: var(--brand-ink); }
+#news .entry { padding: 24px 0 8px; border-top: 1px solid color-mix(in srgb, var(--brand-ink) 14%, transparent); }
+#news .when { margin: 0; font: 600 12px/1.4 var(--sans); letter-spacing: 0.14em; text-transform: uppercase; color: var(--brand-accent); }
+#news h3 { margin: 10px 0 10px; font: 500 26px/1.2 var(--serif); color: var(--brand-ink); }
+#news .entry p:last-child { margin: 0 0 16px; font: 400 17px/1.6 var(--serif); color: var(--brand-soft); text-wrap: pretty; }
 /* Links on the leaf, one way: the ink, a hairline under it that darkens
    under the pointer. */
 #home a.more, #samples a, #apps a[target] {
@@ -177,7 +191,7 @@ button.quiet:hover { color: var(--ink); background: var(--key); }
 #home a.more:hover, #samples a:hover, #apps a[target]:hover { color: var(--brand-ink); border-bottom-color: var(--brand-ink); }
 #samples a { font-weight: 400; }
 #home a.more { font-size: 15px; }
-#home.on-apps .bottom { display: none; }
+#home.on-page .bottom { display: none; }
 
 /* The apps, on the same leaf. */
 #apps { padding: 36px 0 24px; max-width: 60em; }

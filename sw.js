@@ -7,7 +7,7 @@
 const KEEP = 'nano-reader-v1';
 const SHELL = [
     './', 'index.html', 'shell.css', 'manifest.webmanifest',
-    'shell.js', 'model.js', 'panel.js', 'progress.js', 'apps.js', 'ornament.js', 'version.js', 'i18n.js', 'store.js',
+    'shell.js', 'model.js', 'panel.js', 'progress.js', 'apps.js', 'ornament.js', 'version.js', 'news.js', 'i18n.js', 'store.js',
     'book.js', 'zip.js', 'bytes.js', 'sanitize.js', 'template.js',
     'epub.js', 'fb2.js', 'markdown.js', 'text.js', 'pages.js',
     'engine/PositionTracker.js',

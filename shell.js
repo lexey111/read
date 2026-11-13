@@ -11,6 +11,7 @@ import { load, save, defaults, payload, theme, mix, direction, pictureStrip, tur
 import { renderApps } from './apps.js';
 import { ornament } from './ornament.js';
 import { version } from './version.js';
+import { renderNews, latest } from './news.js';
 import { settingsPanel } from './panel.js';
 import { progressBar } from './progress.js';
 import { t, setLanguage, resolve, problem, languages } from './i18n.js';
@@ -299,6 +300,7 @@ function speak() {
     }
     if (!$('home').hidden) offerLast();
     if (!$('apps').hidden) renderApps($('apps'));
+    if (!$('news').hidden) renderNews($('news'), settings.language);
     const choice = $('homeLanguage');
     choice.replaceChildren(new Option(t('As the browser'), 'auto'), ...Object.entries(languages).map(([code, name]) => new Option(name, code)));
     choice.value = settings.language || 'auto';
@@ -581,11 +583,16 @@ $('homeLight').addEventListener('click', (event) => {
 
 /// The home and the apps' page share the leaf; the address says which.
 function route() {
-    const apps = location.hash === '#apps';
-    if (apps) renderApps($('apps'));
-    $('front').hidden = apps;
-    $('apps').hidden = !apps;
-    home.classList.toggle('on-apps', apps);
+    const page = { '#apps': 'apps', '#news': 'news' }[location.hash] || 'front';
+    if (page === 'apps') renderApps($('apps'));
+    if (page === 'news') {
+        renderNews($('news'), settings.language);
+        localStorage.setItem('nano.news.seen', latest);
+    }
+    for (const id of ['front', 'apps', 'news']) $(id).hidden = id !== page;
+    home.classList.toggle('on-page', page !== 'front');
+    // A dot by the version while there is news the reader has not opened.
+    $('version').querySelector('.dot').hidden = (localStorage.getItem('nano.news.seen') || '') >= latest;
     home.querySelector('.leaf').scrollTop = 0;
 }
 addEventListener('hashchange', route);
@@ -620,7 +627,7 @@ fetch('samples.json').then((answer) => (answer.ok ? answer.json() : [])).catch((
     }
 });
 
-$('version').textContent = version;
+$('version').querySelector('.number').textContent = version;
 $('file').setAttribute('accept', accept);
 speak();
 apply();
