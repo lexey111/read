@@ -315,6 +315,7 @@ function speak() {
         node.title = node.dataset.key ? `${words} (${node.dataset.key})` : words;
     }
     if (!$('home').hidden) offerLast();
+    offerInstall();
     if (!$('apps').hidden) renderApps($('apps'));
     if (!$('news').hidden) renderNews($('news'), settings.language);
     const choice = $('homeLanguage');
@@ -631,7 +632,8 @@ addEventListener('resize', () => {
     resizeTimer = setTimeout(() => { if (book && frame.clientWidth !== appliedWidth) apply(); }, 400);
 });
 
-fetch('samples.json').then((answer) => (answer.ok ? answer.json() : [])).catch(() => []).then((samples) => {
+// The development samples, on this machine only: the published reader has none.
+if (['127.0.0.1', 'localhost'].includes(location.hostname)) fetch('samples.json').then((answer) => (answer.ok ? answer.json() : [])).catch(() => []).then((samples) => {
     for (const sample of samples) {
         const row = document.createElement('li');
         const link = document.createElement('a');
@@ -643,14 +645,87 @@ fetch('samples.json').then((answer) => (answer.ok ? answer.json() : [])).catch((
     }
 });
 
+// MARK: - The installed reader
+
+/// Installing: Chromium's own prompt behind a quiet link; Safari has no
+/// prompt, so its menu's path in words (the iPhone's and iPad's share
+/// sheet, the Mac's Add to Dock). Not once installed, not once hidden.
+let installPrompt = null;
+const macSafari = () => {
+    const agent = navigator.userAgent;
+    const safari = /Macintosh/.test(agent) && /Version\/(\d+)[\d.]* Safari/.exec(agent);
+    return !!safari && !/Chrome|Chromium|Edg|Firefox|OPR/.test(agent) && !navigator.maxTouchPoints && Number(safari[1]) >= 17;
+};
+function offerInstall() {
+    const host = $('install');
+    const installed = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+    // `navigator.standalone` is Apple's; with a touch screen it is an iPhone's or an iPad's.
+    const way = installPrompt ? 'prompt' : navigator.standalone === false && navigator.maxTouchPoints > 0 ? 'share' : macSafari() ? 'dock' : '';
+    host.hidden = installed || !way || localStorage.getItem('nano.install.hidden') === '1';
+    if (host.hidden) return;
+    const how = host.querySelector('.how');
+    if (way === 'prompt') {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = t('Install as an app');
+        button.addEventListener('click', async () => {
+            installPrompt.prompt();
+            await installPrompt.userChoice.catch(() => {});
+            installPrompt = null;
+            offerInstall();
+        });
+        how.replaceChildren(button);
+    } else {
+        how.textContent = t(way === 'share' ? 'To install: Share → Add to Home Screen' : 'To install: File → Add to Dock');
+    }
+}
+addEventListener('beforeinstallprompt', (event) => { event.preventDefault(); installPrompt = event; offerInstall(); });
+addEventListener('appinstalled', () => { installPrompt = null; offerInstall(); });
+$('install').querySelector('.hide').addEventListener('click', () => { localStorage.setItem('nano.install.hidden', '1'); offerInstall(); });
+
+/// A new version took over while the page was open: offered at home, by
+/// the version's number — never over a page being read.
+$('update').addEventListener('click', () => location.reload());
+
+// Without the network too, once it has been here; an installed reader
+// opens the files the system hands it.
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    const hadWorker = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadWorker) $('update').hidden = false; });
+    navigator.serviceWorker.register('sw.js').then((registration) => {
+        // An installed reader can stay open for days: it asks again as it
+        // comes back, at most every half an hour.
+        let asked = Date.now();
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState !== 'visible' || Date.now() - asked < 30 * 60 * 1000) return;
+            asked = Date.now();
+            registration.update().catch(() => {});
+        });
+    }).catch(() => {});
+}
+
+/// A file shared from another app (Android's share sheet): the worker kept
+/// it and sent the page here with `?shared`.
+async function takeShared() {
+    if (!new URLSearchParams(location.search).has('shared')) return false;
+    history.replaceState(null, '', location.pathname + location.hash);
+    try {
+        const keep = await caches.open('webreader-shared');
+        const answer = await keep.match('book');
+        if (!answer) return false;
+        await keep.delete('book');
+        const name = decodeURIComponent(answer.headers.get('X-Name') || 'book');
+        await openFile(new File([await answer.blob()], name));
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 $('version').querySelector('.number').textContent = version;
 $('file').setAttribute('accept', accept);
 speak();
 apply();
-
-// Without the network too, once it has been here; an installed reader
-// opens the files the system hands it.
-if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
 if ('launchQueue' in window) {
     window.launchQueue.setConsumer(async (params) => {
         const handle = params.files?.[0];
@@ -658,9 +733,11 @@ if ('launchQueue' in window) {
     });
 }
 
-// A book open when the page went away opens again; else home offers it.
-lastBook().then((record) => {
-    if (record && localStorage.getItem('nano.open') === record.key && !book) reopen(record);
+// A book shared to the reader opens; else a book open when the page went
+// away opens again; else home offers it.
+takeShared().then((took) => (took ? null : lastBook())).then((record) => {
+    if (book) return;
+    if (record && localStorage.getItem('nano.open') === record.key) reopen(record);
     else offerLast();
 });
 

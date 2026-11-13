@@ -49,6 +49,12 @@ const ru = {
     'Direction': 'Направление', 'Left to right': 'Слева направо', 'Right to left': 'Справа налево',
     'Reset to defaults': 'Сбросить настройки',
     'Language': 'Язык', 'As the browser': 'Как в браузере',
+    'A new version is ready': 'Готова новая версия',
+    'Reload': 'Обновить',
+    'Install as an app': 'Установить как приложение',
+    'To install: Share → Add to Home Screen': 'Установить: «Поделиться» → «На экран „Домой“»',
+    'To install: File → Add to Dock': 'Установить: «Файл» → «Добавить в Dock»',
+    'Hide': 'Скрыть',
 };
 
 const uk = {
@@ -93,6 +99,12 @@ const uk = {
     'Direction': 'Напрямок', 'Left to right': 'Зліва направо', 'Right to left': 'Справа наліво',
     'Reset to defaults': 'Скинути налаштування',
     'Language': 'Мова', 'As the browser': 'Як у браузері',
+    'A new version is ready': 'Готова нова версія',
+    'Reload': 'Оновити',
+    'Install as an app': 'Встановити як застосунок',
+    'To install: Share → Add to Home Screen': 'Встановити: «Поширити» → «На Початковий екран»',
+    'To install: File → Add to Dock': 'Встановити: «Файл» → «Додати в Dock»',
+    'Hide': 'Сховати',
 };
 
 const es = {
@@ -137,6 +149,12 @@ const es = {
     'Direction': 'Dirección', 'Left to right': 'De izquierda a derecha', 'Right to left': 'De derecha a izquierda',
     'Reset to defaults': 'Restablecer valores predeterminados',
     'Language': 'Idioma', 'As the browser': 'Como el navegador',
+    'A new version is ready': 'Hay una versión nueva',
+    'Reload': 'Recargar',
+    'Install as an app': 'Instalar como app',
+    'To install: Share → Add to Home Screen': 'Para instalar: Compartir → Añadir a pantalla de inicio',
+    'To install: File → Add to Dock': 'Para instalar: Archivo → Añadir al Dock',
+    'Hide': 'Ocultar',
 };
 
 const fr = {
@@ -181,6 +199,12 @@ const fr = {
     'Direction': 'Sens de lecture', 'Left to right': 'De gauche à droite', 'Right to left': 'De droite à gauche',
     'Reset to defaults': 'Réinitialiser les valeurs par défaut',
     'Language': 'Langue', 'As the browser': 'Comme le navigateur',
+    'A new version is ready': 'Une nouvelle version est prête',
+    'Reload': 'Recharger',
+    'Install as an app': 'Installer comme app',
+    'To install: Share → Add to Home Screen': 'Pour installer : Partager → Sur l’écran d’accueil',
+    'To install: File → Add to Dock': 'Pour installer : Fichier → Ajouter au Dock',
+    'Hide': 'Masquer',
 };
 
 const de = {
@@ -225,6 +249,12 @@ const de = {
     'Direction': 'Leserichtung', 'Left to right': 'Von links nach rechts', 'Right to left': 'Von rechts nach links',
     'Reset to defaults': 'Auf Standard zurücksetzen',
     'Language': 'Sprache', 'As the browser': 'Wie der Browser',
+    'A new version is ready': 'Eine neue Version ist bereit',
+    'Reload': 'Neu laden',
+    'Install as an app': 'Als App installieren',
+    'To install: Share → Add to Home Screen': 'Installieren: Teilen → Zum Home-Bildschirm',
+    'To install: File → Add to Dock': 'Installieren: Ablage → Zum Dock hinzufügen',
+    'Hide': 'Ausblenden',
 };
 
 const zh = {
@@ -269,6 +299,12 @@ const zh = {
     'Direction': '阅读方向', 'Left to right': '从左到右', 'Right to left': '从右到左',
     'Reset to defaults': '恢复默认值',
     'Language': '语言', 'As the browser': '跟随浏览器',
+    'A new version is ready': '新版本已就绪',
+    'Reload': '重新载入',
+    'Install as an app': '安装为应用',
+    'To install: Share → Add to Home Screen': '安装方法：分享 → 添加到主屏幕',
+    'To install: File → Add to Dock': '安装方法：文件 → 添加到程序坞',
+    'Hide': '隐藏',
 };
 
 const ja = {
@@ -313,6 +349,12 @@ const ja = {
     'Direction': '読む方向', 'Left to right': '左から右', 'Right to left': '右から左',
     'Reset to defaults': 'デフォルトに戻す',
     'Language': '言語', 'As the browser': 'ブラウザに合わせる',
+    'A new version is ready': '新しいバージョンがあります',
+    'Reload': '再読み込み',
+    'Install as an app': 'アプリとしてインストール',
+    'To install: Share → Add to Home Screen': 'インストール：共有 → ホーム画面に追加',
+    'To install: File → Add to Dock': 'インストール：ファイル → Dock に追加',
+    'Hide': '隠す',
 };
 
 /// The converters' messages, by their English words.

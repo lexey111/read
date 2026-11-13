@@ -30,7 +30,7 @@
                 <button id="open" type="button" class="prominent" data-i18n="Open a book…">Open a book…</button>
                 <span class="hint" data-i18n="or drop it on the page">or drop it on the page</span>
             </div>
-            <p class="notes"><span id="formats"></span><br><span data-i18n="Your books stay on your device.">Your books stay on your device.</span></p>
+            <p class="notes"><span id="formats"></span><br><span data-i18n="Your books stay on your device.">Your books stay on your device.</span><span id="install" hidden><br><span class="how"></span><button type="button" class="hide" data-i18n-label="Hide">×</button></span></p>
             <p id="problem" role="alert"></p>
             <button id="resume" type="button" hidden>
                 <span class="cover"><span class="initial"></span></span>
@@ -49,6 +49,7 @@
 
         <footer class="bottom">
             <a id="appsDoor" class="more" href="#apps"><span data-i18n="More in the apps">More in the apps</span> →</a>
+            <button id="update" type="button" class="update" hidden><span data-i18n="A new version is ready">A new version is ready</span> · <u data-i18n="Reload">Reload</u></button>
             <a id="version" class="version" href="#news" data-i18n-label="What’s new"><span class="dot" hidden></span><span class="number"></span></a>
         </footer>
     </div>

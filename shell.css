@@ -164,8 +164,19 @@ button.quiet:hover { color: var(--ink); background: var(--key); }
 
 #samples { list-style: none; margin: 14px 0 0; padding: 0; font-size: 12px; line-height: 1.9; }
 
-#home .bottom { padding-top: 40px; display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+#home .bottom { padding-top: 40px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 16px; }
 /* The version, in the corner, for whoever looks. */
+/* The number at the row's end; a new version's notice just before it. */
+#home .version, #home .update { margin-left: auto; }
+#home .update:not([hidden]) + .version { margin-left: 0; }
+#home .update { white-space: nowrap; background: none; border: 0; padding: 0; font: inherit; font-size: 12px; color: var(--brand-accent-deep); cursor: pointer; }
+#home .update u { text-underline-offset: 3px; }
+#home .update:hover u { text-decoration-thickness: 2px; }
+#home .update[hidden], #install[hidden] { display: none; }
+#install .how button { background: none; border: 0; padding: 0; font: inherit; color: var(--brand-ink); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, currentColor 40%, transparent); cursor: pointer; }
+#install .how button:hover { text-decoration-color: currentColor; }
+#install .hide { background: none; border: 0; padding: 0 4px; margin-left: 6px; font: inherit; font-size: 13px; line-height: 1; color: inherit; opacity: 0.6; cursor: pointer; }
+#install .hide:hover { opacity: 1; }
 #home .version { font-size: 11px; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; color: var(--brand-soft); opacity: 0.6; text-decoration: none; transition: opacity 0.18s; }
 #home .version:hover { opacity: 1; }
 #home .version .dot { display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: var(--brand-accent); vertical-align: 1px; }
@@ -235,6 +246,9 @@ button.quiet:hover { color: var(--ink); background: var(--key); }
     #home .lead { font-size: 16px; }
     #home .hint { display: none; }
     #resume { width: calc(100% + 24px); }
+    /* No room beside the apps' door: the notice takes a line of its own above it. */
+    #home .update { order: -1; flex-basis: 100%; text-align: right; }
+    #home .update:not([hidden]) + .version { margin-left: auto; }
 }
 @media (pointer: coarse) { #home .hint { display: none; } }
 
