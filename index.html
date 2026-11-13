@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>WebReader</title>
+<meta name="theme-color" content="#f8f1e3">
+<meta name="description" content="A book reader in the browser: EPUB, FB2, CBZ, Markdown, TXT and HTML. Your books stay on your device.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="shell.css">
+</head>
+<body>
+<div id="home">
+    <div class="leaf">
+        <header class="top">
+            <label class="language"><span class="globe" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c-2.6 2.4-3.6 5.2-3.6 8.5s1 6.1 3.6 8.5M12 3.5c2.6 2.4 3.6 5.2 3.6 8.5s-1 6.1-3.6 8.5"/></svg></span><select id="homeLanguage" data-i18n-label="Language"></select></label>
+            <div id="homeLight" class="segmented icons" role="radiogroup">
+                <button type="button" role="radio" data-value="auto" data-i18n-label="Auto"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5"/><path d="M12 4.5a7.5 7.5 0 0 1 0 15z" class="fill"/></svg></button>
+                <button type="button" role="radio" data-value="day" data-i18n-label="Day"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.5 1.5M17.2 17.2l1.5 1.5M5.3 18.7l1.5-1.5M17.2 6.8l1.5-1.5"/></svg></button>
+                <button type="button" role="radio" data-value="night" data-i18n-label="Night"><svg viewBox="0 0 24 24"><path d="M19.5 14.6A8 8 0 0 1 9.4 4.5a8 8 0 1 0 10.1 10.1z"/></svg></button>
+            </div>
+        </header>
+
+        <main id="front">
+            <p class="eyebrow" data-i18n="A book reader in the browser">A book reader in the browser</p>
+            <h1 aria-label="WebReader"><span class="dropcap">W</span>eb<br><em>Reader<span class="punct">.</span></em></h1>
+            <div class="doors">
+                <button id="open" type="button" class="prominent" data-i18n="Open a book…">Open a book…</button>
+                <span class="hint" data-i18n="or drop it on the page">or drop it on the page</span>
+            </div>
+            <p class="notes"><span id="formats"></span><br><span data-i18n="Your books stay on your device.">Your books stay on your device.</span></p>
+            <p id="problem" role="alert"></p>
+            <button id="resume" type="button" hidden>
+                <span class="cover"><span class="initial"></span></span>
+                <span class="words">
+                    <span class="label"></span>
+                    <span class="name"></span>
+                    <span class="how-far"><span class="progress-line"><i></i></span><span class="share"></span></span>
+                </span>
+            </button>
+            <input id="file" type="file" hidden>
+            <ul id="samples"></ul>
+        </main>
+
+        <section id="apps" hidden></section>
+
+        <footer class="bottom">
+            <a id="appsDoor" class="more" href="#apps"><span data-i18n="More in the apps">More in the apps</span> →</a>
+            <span id="version" class="version"></span>
+        </footer>
+    </div>
+    <div class="band" aria-hidden="true"></div>
+    <img class="seal" src="icons/seal.svg" alt="" aria-hidden="true">
+</div>
+
+<section id="reader" hidden>
+    <iframe id="page" title="Book"></iframe>
+    <footer id="strip">
+        <div class="side">
+            <button id="close" type="button" class="icon" data-i18n-label="Close the book" title="Close the book" aria-label="Close the book"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+            <span id="title"></span>
+        </div>
+        <div class="group">
+            <button id="contentsDoor" type="button" class="icon" data-i18n-label="Contents" title="Contents" aria-label="Contents"><svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h9"/></svg></button>
+            <button id="settings" type="button" class="icon text" data-i18n-label="Reading settings" title="Reading settings" aria-label="Reading settings">Aa</button>
+            <div id="bar"></div>
+            <span id="position"></span>
+        </div>
+        <div class="side end">
+            <button id="fullscreen" type="button" class="icon" data-i18n-label="Full screen" data-key="F" title="Full screen (F)" aria-label="Full screen"><svg viewBox="0 0 24 24"><path class="enter" d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/><path class="leave" d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"/></svg></button>
+        </div>
+    </footer>
+    <nav id="contents" hidden></nav>
+</section>
+
+<dialog id="panel" tabindex="-1" aria-label="Reading settings"></dialog>
+<script type="module" src="shell.js"></script>
+</body>
+</html>

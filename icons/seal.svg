@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-140 -140 280 280">
+  <!-- The web reader's logo as a seal: the globe's half and the wing's,
+       its seam on the edge between the page and the band. -->
+  <circle r="138" fill="#1F3A52"/>
+  <circle r="126" fill="none" stroke="#F7F2E8" stroke-width="1.6" opacity="0.45"/>
+  <g fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" transform="translate(-19.5 16)">
+    <g stroke="#7FB8E0" transform="translate(0 -16)">
+      <path d="M 0,-76 A 76,76 0 0 0 0,76"/>
+      <path d="M 0,-76 A 46,76 0 0 0 0,76"/>
+      <path d="M 0,-76 A 18,76 0 0 0 0,76"/>
+      <line x1="-62.6" y1="-43" x2="0" y2="-43"/>
+      <line x1="-76" y1="0" x2="0" y2="0"/>
+      <line x1="-62.6" y1="43" x2="0" y2="43"/>
+      <line x1="0" y1="-76" x2="0" y2="76"/>
+    </g>
+    <g stroke="#F09A6A">
+      <path d="M 8,4 C 16,44 62,60 74,38 C 86,16 66,-14 46,-12 C 28,-10 14,-4 8,0 Z"/>
+      <path d="M 8,-2 C 24,-70 98,-96 112,-58 C 125,-20 98,38 66,33 C 42,28 18,12 8,0 Z"/>
+    </g>
+    <circle cx="0" cy="0" r="6.5" fill="#E07040" stroke="none"/>
+  </g>
+</svg>

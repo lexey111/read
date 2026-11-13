@@ -1,0 +1,8 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg"><rect width="1024" height="1024" fill="#1F3A52"/>
+<g transform="translate(512 512) scale(3.6)" fill="none" stroke="#F7F2E8" stroke-width="7" stroke-linejoin="round">
+  <path d="M -8,4 C -16,44 -62,60 -74,38 C -86,16 -66,-14 -46,-12 C -28,-10 -14,-4 -8,0 Z"/>
+  <path d="M 8,4 C 16,44 62,60 74,38 C 86,16 66,-14 46,-12 C 28,-10 14,-4 8,0 Z"/>
+  <path d="M -8,-2 C -24,-70 -98,-96 -112,-58 C -125,-20 -98,38 -66,33 C -42,28 -18,12 -8,0 Z"/>
+  <path d="M 8,-2 C 24,-70 98,-96 112,-58 C 125,-20 98,38 66,33 C 42,28 18,12 8,0 Z"/>
+</g>
+<circle cx="512" cy="512" r="24" fill="#C45D38"/></svg>
