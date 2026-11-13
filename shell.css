@@ -202,6 +202,8 @@ button.quiet:hover { color: var(--ink); background: var(--key); }
 #home a.more:hover, #samples a:hover, #apps a[target]:hover { color: var(--brand-ink); border-bottom-color: var(--brand-ink); }
 #samples a { font-weight: 400; }
 #home a.more { font-size: 15px; }
+/* The family's form on the site, beside the apps' door and quieter. */
+#home a.feedback { font-size: 14px; margin-left: 8px; }
 #home.on-page .bottom { display: none; }
 
 /* The apps, on the same leaf. */

@@ -8,7 +8,7 @@
 // Stamped by scripts/stamp-version.sh with every commit: a new version is
 // a new worker, which keeps its files under its own name, drops the old
 // ones and tells the open pages (`controllerchange`).
-const VERSION = '1.8.22';
+const VERSION = '1.8.23';
 const KEEP = 'webreader-' + VERSION;
 // pdf.js changes with its own number, not ours: kept across versions, so
 // a PDF opens offline after an update too. The package's version.

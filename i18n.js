@@ -55,6 +55,7 @@ const ru = {
     'To install: Share → Add to Home Screen': 'Установить: «Поделиться» → «На экран „Домой“»',
     'To install: File → Add to Dock': 'Установить: «Файл» → «Добавить в Dock»',
     'Hide': 'Скрыть',
+    'Feedback': 'Написать нам',
 };
 
 const uk = {
@@ -105,6 +106,7 @@ const uk = {
     'To install: Share → Add to Home Screen': 'Встановити: «Поширити» → «На Початковий екран»',
     'To install: File → Add to Dock': 'Встановити: «Файл» → «Додати в Dock»',
     'Hide': 'Сховати',
+    'Feedback': 'Написати нам',
 };
 
 const es = {
@@ -155,6 +157,7 @@ const es = {
     'To install: Share → Add to Home Screen': 'Para instalar: Compartir → Añadir a pantalla de inicio',
     'To install: File → Add to Dock': 'Para instalar: Archivo → Añadir al Dock',
     'Hide': 'Ocultar',
+    'Feedback': 'Escríbenos',
 };
 
 const fr = {
@@ -205,6 +208,7 @@ const fr = {
     'To install: Share → Add to Home Screen': 'Pour installer : Partager → Sur l’écran d’accueil',
     'To install: File → Add to Dock': 'Pour installer : Fichier → Ajouter au Dock',
     'Hide': 'Masquer',
+    'Feedback': 'Nous écrire',
 };
 
 const de = {
@@ -255,6 +259,7 @@ const de = {
     'To install: Share → Add to Home Screen': 'Installieren: Teilen → Zum Home-Bildschirm',
     'To install: File → Add to Dock': 'Installieren: Ablage → Zum Dock hinzufügen',
     'Hide': 'Ausblenden',
+    'Feedback': 'Feedback',
 };
 
 const zh = {
@@ -305,6 +310,7 @@ const zh = {
     'To install: Share → Add to Home Screen': '安装方法：分享 → 添加到主屏幕',
     'To install: File → Add to Dock': '安装方法：文件 → 添加到程序坞',
     'Hide': '隐藏',
+    'Feedback': '发送反馈',
 };
 
 const ja = {
@@ -355,6 +361,7 @@ const ja = {
     'To install: Share → Add to Home Screen': 'インストール：共有 → ホーム画面に追加',
     'To install: File → Add to Dock': 'インストール：ファイル → Dock に追加',
     'Hide': '隠す',
+    'Feedback': 'フィードバック',
 };
 
 /// The converters' messages, by their English words.

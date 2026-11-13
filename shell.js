@@ -14,7 +14,7 @@ import { version } from './version.js';
 import { renderNews, latest } from './news.js';
 import { settingsPanel } from './panel.js';
 import { progressBar } from './progress.js';
-import { t, setLanguage, resolve, problem, languages } from './i18n.js';
+import { t, setLanguage, resolve, problem, languages, language } from './i18n.js';
 import { keepLast, lastBook } from './store.js';
 
 const $ = (id) => document.getElementById(id);
@@ -316,6 +316,9 @@ function speak() {
     }
     if (!$('home').hidden) offerLast();
     offerInstall();
+    // The family's form, told which reader and in which language (the site
+    // has six of the eight; it keeps its own choice for the others).
+    $('feedback').href = `https://continuousreader.app/contact.html?app=webreader&lang=${language()}`;
     if (!$('apps').hidden) renderApps($('apps'));
     if (!$('news').hidden) renderNews($('news'), settings.language);
     const choice = $('homeLanguage');
