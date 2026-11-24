@@ -17,6 +17,7 @@ import { settingsPanel } from './panel.js';
 import { progressBar } from './progress.js';
 import { t, setLanguage, resolve, problem, languages, language } from './i18n.js';
 import { shelf, keep, refresh, forget, hasRoom, slots } from './store.js';
+import { desktop, appName, booksFromSystem, linksGoOutside } from './desktop.js';
 
 const $ = (id) => document.getElementById(id);
 const frame = $('page');
@@ -161,7 +162,7 @@ async function show(next) {
     restored = false;
     place = { progress: 0, currentPage: 0, totalPages: 0 };
     messages.length = 0;
-    document.title = book.title + ' — WebReader';
+    document.title = book.title + ' — ' + appName;
     $('title').textContent = book.author ? `${book.title} — ${book.author}` : book.title;
     $('position').textContent = '';
     $('contentsDoor').hidden = !(book.chapters && book.chapters.length > 1);
@@ -184,15 +185,10 @@ async function show(next) {
         page.webkit.messageHandlers[name] = { postMessage: (body) => receive(name, body) };
     }
     page.addEventListener('error', (event) => errors.push(String(event.message)));
-    // The script blurs the text while a resize is laid out again. Chromium
-    // paints that blur over the whole book — hundreds of columns — and a
-    // large book stood still for three seconds; the dimming alone stays.
-    const calm = page.document.createElement('style');
-    calm.textContent = 'body { filter: none !important; }';
-    page.document.head.appendChild(calm);
     page.addEventListener('pointerdown', () => { $('contents').hidden = true; });
     page.addEventListener('mousemove', wake, { passive: true });
     page.addEventListener('keydown', keys);
+    linksGoOutside(page.document);
 
     const notes = page.document.getElementById('_cr_footnotes');
     const characters = page.document.body.textContent.length - (notes ? notes.textContent.length : 0);
@@ -232,7 +228,7 @@ function close() {
     frame.srcdoc = '';
     $('reader').hidden = true;
     $('home').hidden = false;
-    document.title = 'WebReader';
+    document.title = appName;
     apply();
 }
 
@@ -328,7 +324,7 @@ function speak() {
     if (!$('apps').hidden) renderApps($('apps'));
     if (!$('news').hidden) renderNews($('news'), settings.language);
     const choice = $('homeLanguage');
-    choice.replaceChildren(new Option(t('As the browser'), 'auto'), ...Object.entries(languages).map(([code, name]) => new Option(name, code)));
+    choice.replaceChildren(new Option(t(desktop ? 'As the system' : 'As the browser'), 'auto'), ...Object.entries(languages).map(([code, name]) => new Option(name, code)));
     choice.value = settings.language || 'auto';
     $('formats').textContent = t(formats) + '.';
     $('bar').querySelector('.progress')?.setAttribute('aria-label', t('Position in the book'));
@@ -944,7 +940,7 @@ function offerInstall() {
     const installed = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
     // `navigator.standalone` is Apple's; with a touch screen it is an iPhone's or an iPad's.
     const way = installPrompt ? 'prompt' : navigator.standalone === false && navigator.maxTouchPoints > 0 ? 'share' : macSafari() ? 'dock' : '';
-    host.hidden = installed || !way || localStorage.getItem('nano.install.hidden') === '1';
+    host.hidden = desktop || installed || !way || localStorage.getItem('nano.install.hidden') === '1';
     if (host.hidden) return;
     const how = host.querySelector('.how');
     if (way === 'prompt') {
@@ -973,8 +969,9 @@ $('update').addEventListener('click', () => location.reload());
 let updateCheck = () => {};
 
 // Without the network too, once it has been here; an installed reader
-// opens the files the system hands it.
-if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+// opens the files the system hands it. The program on the desk is there
+// without a worker.
+if (!desktop && 'serviceWorker' in navigator && location.protocol !== 'file:') {
     const hadWorker = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadWorker) $('update').hidden = false; });
     navigator.serviceWorker.register('sw.js').then((registration) => {
@@ -1012,6 +1009,15 @@ async function takeShared() {
     }
 }
 
+// On the desk the reader is NanoReader, and no browser is around it.
+if (desktop) {
+    document.title = appName;
+    document.querySelector('#front .eyebrow').dataset.i18n = 'A small book reader';
+    const name = document.querySelector('#front h1');
+    name.setAttribute('aria-label', appName);
+    name.querySelector('.dropcap').textContent = 'N';
+    name.querySelector('.dropcap').nextSibling.textContent = 'ano';
+}
 $('version').querySelector('.number').textContent = version;
 $('file').setAttribute('accept', accept);
 speak();
@@ -1023,9 +1029,11 @@ if ('launchQueue' in window) {
     });
 }
 
-// A book shared to the reader opens; else a book open when the page went
-// away opens again; else home offers it.
-takeShared().then((took) => (took ? null : shelf())).then((books) => {
+// A book shared to the reader or handed to the program opens; else a book
+// open when the page went away opens again; else home offers it.
+takeShared()
+    .then((took) => took || booksFromSystem(openFile, (words) => { $('problem').textContent = problem(words); }))
+    .then((took) => (took ? null : shelf())).then((books) => {
     if (book || !books) return;
     const open = books.find((record) => record.key === localStorage.getItem('nano.open'));
     if (open) reopen(open);

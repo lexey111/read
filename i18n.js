@@ -2,6 +2,8 @@
 // words; the reader's terms are the apps' own (ContinuousReader's string
 // catalog), so a reader who knows the apps meets the same words.
 
+import { named } from './desktop.js';
+
 export const languages = {
     en: 'English', ru: 'Русский', uk: 'Українська', es: 'Español',
     fr: 'Français', de: 'Deutsch', 'zh-Hans': '简体中文', ja: '日本語',
@@ -37,7 +39,7 @@ const ru = {
     'Transparent page background': 'Прозрачный фон страницы',
     'Page': 'Страница', 'Paper': 'Бумага', 'Grain': 'Фактура', 'Paper grain': 'Фактура бумаги',
     'Plain': 'Гладкая', 'Lined': 'Линованная', 'Squared': 'В клетку', 'Sand': 'Песок', 'Kraft': 'Крафт', 'Fibre': 'С волокнами', 'Laid': 'Верже',
-    'Frame': 'Рамка', 'No frame': 'Без рамки', 'Rule': 'Линия', 'Double rule': 'Двойная линия', 'Ticket': 'С вырезами', 'Vintage': 'Винтаж',
+    'Frame': 'Рамка', 'No frame': 'Без рамки', 'Rule': 'Линия', 'Double rule': 'Двойная линия', 'Ticket': 'С вырезами',
     'Margins': 'Поля',
     'Text': 'Текст',
     'Serif': 'С засечками', 'Book': 'Книжный', 'Sans': 'Без засечек', 'Mono': 'Моно',
@@ -48,7 +50,7 @@ const ru = {
     'Columns': 'Колонки', 'Page turn': 'Листание', 'Slide': 'Слайд', 'At once': 'Мгновенно',
     'Direction': 'Направление', 'Left to right': 'Слева направо', 'Right to left': 'Справа налево',
     'Reset to defaults': 'Сбросить настройки',
-    'Language': 'Язык', 'As the browser': 'Как в браузере',
+    'Language': 'Язык', 'As the browser': 'Как в браузере', 'As the system': 'Как в системе', 'A small book reader': 'Маленькая читалка книг',
     'A new version is ready': 'Готова новая версия',
     'Reload': 'Обновить',
     'Install as an app': 'Установить как приложение',
@@ -104,7 +106,7 @@ const uk = {
     'Transparent page background': 'Прозорий фон сторінки',
     'Page': 'Сторінка', 'Paper': 'Папір', 'Grain': 'Фактура', 'Paper grain': 'Фактура паперу',
     'Plain': 'Гладкий', 'Lined': 'Лінійований', 'Squared': 'У клітинку', 'Sand': 'Пісок', 'Kraft': 'Крафт', 'Fibre': 'З волокнами', 'Laid': 'Верже',
-    'Frame': 'Рамка', 'No frame': 'Без рамки', 'Rule': 'Лінія', 'Double rule': 'Подвійна лінія', 'Ticket': 'З вирізами', 'Vintage': 'Вінтаж',
+    'Frame': 'Рамка', 'No frame': 'Без рамки', 'Rule': 'Лінія', 'Double rule': 'Подвійна лінія', 'Ticket': 'З вирізами',
     'Margins': 'Поля',
     'Text': 'Текст',
     'Serif': 'Із засічками', 'Book': 'Книжковий', 'Sans': 'Без засічок', 'Mono': 'Моно',
@@ -115,7 +117,7 @@ const uk = {
     'Columns': 'Колонки', 'Page turn': 'Гортання', 'Slide': 'Слайд', 'At once': 'Миттєво',
     'Direction': 'Напрямок', 'Left to right': 'Зліва направо', 'Right to left': 'Справа наліво',
     'Reset to defaults': 'Скинути налаштування',
-    'Language': 'Мова', 'As the browser': 'Як у браузері',
+    'Language': 'Мова', 'As the browser': 'Як у браузері', 'As the system': 'Як у системі', 'A small book reader': 'Маленька читалка книг',
     'A new version is ready': 'Готова нова версія',
     'Reload': 'Оновити',
     'Install as an app': 'Встановити як застосунок',
@@ -171,7 +173,7 @@ const es = {
     'Transparent page background': 'Fondo de página transparente',
     'Page': 'Página', 'Paper': 'Papel', 'Grain': 'Textura', 'Paper grain': 'Textura del papel',
     'Plain': 'Liso', 'Lined': 'Rayado', 'Squared': 'Cuadriculado', 'Sand': 'Arena', 'Kraft': 'Kraft', 'Fibre': 'Con fibras', 'Laid': 'Verjurado',
-    'Frame': 'Marco', 'No frame': 'Sin marco', 'Rule': 'Línea', 'Double rule': 'Línea doble', 'Ticket': 'Con muescas', 'Vintage': 'Vintage',
+    'Frame': 'Marco', 'No frame': 'Sin marco', 'Rule': 'Línea', 'Double rule': 'Línea doble', 'Ticket': 'Con muescas',
     'Margins': 'Márgenes',
     'Text': 'Texto',
     'Serif': 'Serif', 'Book': 'Libro', 'Sans': 'Sans', 'Mono': 'Mono',
@@ -182,7 +184,7 @@ const es = {
     'Columns': 'Columnas', 'Page turn': 'Paso de página', 'Slide': 'Deslizar', 'At once': 'Instantáneo',
     'Direction': 'Dirección', 'Left to right': 'De izquierda a derecha', 'Right to left': 'De derecha a izquierda',
     'Reset to defaults': 'Restablecer valores predeterminados',
-    'Language': 'Idioma', 'As the browser': 'Como el navegador',
+    'Language': 'Idioma', 'As the browser': 'Como el navegador', 'As the system': 'Como el sistema', 'A small book reader': 'Un pequeño lector de libros',
     'A new version is ready': 'Hay una versión nueva',
     'Reload': 'Recargar',
     'Install as an app': 'Instalar como app',
@@ -238,7 +240,7 @@ const fr = {
     'Transparent page background': 'Fond de page transparent',
     'Page': 'Page', 'Paper': 'Papier', 'Grain': 'Texture', 'Paper grain': 'Texture du papier',
     'Plain': 'Uni', 'Lined': 'Ligné', 'Squared': 'Quadrillé', 'Sand': 'Sable', 'Kraft': 'Kraft', 'Fibre': 'Fibré', 'Laid': 'Vergé',
-    'Frame': 'Cadre', 'No frame': 'Sans cadre', 'Rule': 'Filet', 'Double rule': 'Double filet', 'Ticket': 'Échancré', 'Vintage': 'Vintage',
+    'Frame': 'Cadre', 'No frame': 'Sans cadre', 'Rule': 'Filet', 'Double rule': 'Double filet', 'Ticket': 'Échancré',
     'Margins': 'Marges',
     'Text': 'Texte',
     'Serif': 'Serif', 'Book': 'Livre', 'Sans': 'Sans', 'Mono': 'Mono',
@@ -249,7 +251,7 @@ const fr = {
     'Columns': 'Colonnes', 'Page turn': 'Changement de page', 'Slide': 'Glisser', 'At once': 'Instantané',
     'Direction': 'Sens de lecture', 'Left to right': 'De gauche à droite', 'Right to left': 'De droite à gauche',
     'Reset to defaults': 'Réinitialiser les valeurs par défaut',
-    'Language': 'Langue', 'As the browser': 'Comme le navigateur',
+    'Language': 'Langue', 'As the browser': 'Comme le navigateur', 'As the system': 'Comme le système', 'A small book reader': 'Un petit lecteur de livres',
     'A new version is ready': 'Une nouvelle version est prête',
     'Reload': 'Recharger',
     'Install as an app': 'Installer comme app',
@@ -305,7 +307,7 @@ const de = {
     'Transparent page background': 'Transparenter Seitenhintergrund',
     'Page': 'Seite', 'Paper': 'Papier', 'Grain': 'Struktur', 'Paper grain': 'Papierstruktur',
     'Plain': 'Glatt', 'Lined': 'Liniert', 'Squared': 'Kariert', 'Sand': 'Sand', 'Kraft': 'Kraft', 'Fibre': 'Faser', 'Laid': 'Vergé',
-    'Frame': 'Rahmen', 'No frame': 'Ohne Rahmen', 'Rule': 'Linie', 'Double rule': 'Doppellinie', 'Ticket': 'Gekerbt', 'Vintage': 'Vintage',
+    'Frame': 'Rahmen', 'No frame': 'Ohne Rahmen', 'Rule': 'Linie', 'Double rule': 'Doppellinie', 'Ticket': 'Gekerbt',
     'Margins': 'Ränder',
     'Text': 'Text',
     'Serif': 'Serif', 'Book': 'Buch', 'Sans': 'Sans', 'Mono': 'Mono',
@@ -316,7 +318,7 @@ const de = {
     'Columns': 'Spalten', 'Page turn': 'Blättern', 'Slide': 'Gleiten', 'At once': 'Sofort',
     'Direction': 'Leserichtung', 'Left to right': 'Von links nach rechts', 'Right to left': 'Von rechts nach links',
     'Reset to defaults': 'Auf Standard zurücksetzen',
-    'Language': 'Sprache', 'As the browser': 'Wie der Browser',
+    'Language': 'Sprache', 'As the browser': 'Wie der Browser', 'As the system': 'Wie das System', 'A small book reader': 'Ein kleiner Buchleser',
     'A new version is ready': 'Eine neue Version ist bereit',
     'Reload': 'Neu laden',
     'Install as an app': 'Als App installieren',
@@ -372,7 +374,7 @@ const zh = {
     'Transparent page background': '页面背景透明',
     'Page': '页面', 'Paper': '纸张', 'Grain': '纹理', 'Paper grain': '纸张纹理',
     'Plain': '素纸', 'Lined': '横线纸', 'Squared': '方格纸', 'Sand': '沙粒', 'Kraft': '牛皮纸', 'Fibre': '纤维纸', 'Laid': '直纹纸',
-    'Frame': '边框', 'No frame': '无边框', 'Rule': '单线', 'Double rule': '双线', 'Ticket': '凹角', 'Vintage': '复古',
+    'Frame': '边框', 'No frame': '无边框', 'Rule': '单线', 'Double rule': '双线', 'Ticket': '凹角',
     'Margins': '页边距',
     'Text': '文本',
     'Serif': '衬线体', 'Book': '书籍', 'Sans': '无衬线', 'Mono': '等宽',
@@ -383,7 +385,7 @@ const zh = {
     'Columns': '分栏', 'Page turn': '翻页', 'Slide': '滑动', 'At once': '即时',
     'Direction': '阅读方向', 'Left to right': '从左到右', 'Right to left': '从右到左',
     'Reset to defaults': '恢复默认值',
-    'Language': '语言', 'As the browser': '跟随浏览器',
+    'Language': '语言', 'As the browser': '跟随浏览器', 'As the system': '跟随系统', 'A small book reader': '小巧的电子书阅读器',
     'A new version is ready': '新版本已就绪',
     'Reload': '重新载入',
     'Install as an app': '安装为应用',
@@ -439,7 +441,7 @@ const ja = {
     'Transparent page background': 'ページの背景を透明に',
     'Page': 'ページ', 'Paper': '紙', 'Grain': '質感', 'Paper grain': '紙の質感',
     'Plain': '無地', 'Lined': '罫線紙', 'Squared': '方眼紙', 'Sand': '砂', 'Kraft': 'クラフト紙', 'Fibre': '繊維入り', 'Laid': 'レイド紙',
-    'Frame': '枠', 'No frame': '枠なし', 'Rule': '一重線', 'Double rule': '二重線', 'Ticket': '切り欠き', 'Vintage': 'ヴィンテージ',
+    'Frame': '枠', 'No frame': '枠なし', 'Rule': '一重線', 'Double rule': '二重線', 'Ticket': '切り欠き',
     'Margins': '余白',
     'Text': 'テキスト',
     'Serif': 'セリフ', 'Book': 'ブック', 'Sans': 'サンセリフ', 'Mono': '等幅',
@@ -450,7 +452,7 @@ const ja = {
     'Columns': '段組み', 'Page turn': 'ページめくり', 'Slide': 'スライド', 'At once': '即時',
     'Direction': '読む方向', 'Left to right': '左から右', 'Right to left': '右から左',
     'Reset to defaults': 'デフォルトに戻す',
-    'Language': '言語', 'As the browser': 'ブラウザに合わせる',
+    'Language': '言語', 'As the browser': 'ブラウザに合わせる', 'As the system': 'システムに合わせる', 'A small book reader': '小さな電子書籍リーダー',
     'A new version is ready': '新しいバージョンがあります',
     'Reload': '再読み込み',
     'Install as an app': 'アプリとしてインストール',
@@ -637,7 +639,7 @@ export function setLanguage(code) {
 
 export const language = () => current;
 
-export const t = (text) => dictionaries[current]?.[text] ?? text;
+export const t = (text) => named(dictionaries[current]?.[text] ?? text);
 
 /// A converter's message in the reader's language; as it was where no
 /// rule says it.

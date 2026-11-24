@@ -37,7 +37,6 @@ const frames = [
     ['single', 'Rule', '<rect x="4.5" y="4.5" width="27" height="35" rx="0.5"/>'],
     ['double', 'Double rule', '<rect x="3.5" y="3.5" width="29" height="37"/><rect x="6" y="6" width="24" height="32"/>'],
     ['notched', 'Ticket', '<path d="M8 4.5h20a3.5 3.5 0 0 0 3.5 3.5v28a3.5 3.5 0 0 0-3.5 3.5H8A3.5 3.5 0 0 0 4.5 36V8A3.5 3.5 0 0 0 8 4.5z"/>'],
-    ['vintage', 'Vintage', '<rect x="3.5" y="3.5" width="29" height="37"/><rect x="6" y="6" width="24" height="32"/><circle cx="6" cy="6" r="1.6"/><circle cx="30" cy="6" r="1.6"/><circle cx="6" cy="38" r="1.6"/><circle cx="30" cy="38" r="1.6"/>'],
 ];
 /// One column of text inside the rule, or two with the gutter between.
 const frameTile = (drawing, kind) => `<svg viewBox="0 0 36 44">${kind === 'two'

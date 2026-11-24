@@ -59,10 +59,38 @@
 
     // --- XPath utilities ---
 
+    /// The script's own wrappers — a search hit's `<mark>`, a bookmark's
+    /// tinted `<span>` — are not the book's: they come and go.
+    function isOwnWrapper(el) {
+        if (!el || el.nodeType !== Node.ELEMENT_NODE || typeof el.className !== 'string') return false;
+        return (el.tagName === 'MARK' && el.className.indexOf('_cr_search_match') !== -1)
+            || (el.tagName === 'SPAN' && el.className.indexOf('_cr_bm_text_') !== -1);
+    }
+
+    /// An own wrapper taken away with what it holds left in its place.
+    /// Replaced by its text, a search hit's clearing wiped a bookmark's
+    /// span inside it, and a bookmark's redraw detached the search hits
+    /// inside its span — still counted, and Next landed nowhere (the 1.9
+    /// audit).
+    function unwrapOwn(el) {
+        var parent = el.parentNode;
+        if (!parent) return;
+        while (el.firstChild) parent.insertBefore(el.firstChild, el);
+        parent.removeChild(el);
+        parent.normalize();
+    }
+
     function getXPath(node) {
         if (node.nodeType === Node.TEXT_NODE) {
             node = node.parentNode;
         }
+        // Out of the script's own wrappers (the 1.9 audit, 22.11.2026): a
+        // selection begun inside a lit search hit was stored as
+        // «…/p[12]/mark[1]», a path to nothing once the search was
+        // cleared — the mark was then drawn on the book's first paragraph
+        // with that word, on every device; and a reading place taken
+        // inside a bookmark's span did not resolve on a device without it.
+        while (isOwnWrapper(node)) node = node.parentNode;
         if (!node || node === document.body) return '/html/body';
 
         const parts = [];
@@ -248,9 +276,36 @@
         }
 
         if (scrollY <= 0) {
-            if (xpath && xpath !== '/html/body') {
-                const node = getNodeByXPath(xpath);
-                if (node) node.scrollIntoView({ behavior: 'instant', block: 'start' });
+            const node = (xpath && xpath !== '/html/body') ? getNodeByXPath(xpath) : null;
+            if (node) {
+                node.scrollIntoView({ behavior: 'instant', block: 'start' });
+                var inside = topInsideTallAnchor(node, progress || 0);
+                if (inside >= 0) window.scrollTo({ top: inside, behavior: 'instant' });
+            } else if ((progress || 0) > 0) {
+                // No element to stand on — a strip of pictures has no
+                // text and says '/html/body' always; a path through a
+                // wrapper the other device does not have — and a place
+                // from another device carries no scrollY: by the fraction
+                // then, once the height has settled (the 1.9 audit,
+                // 22.11.2026). The book stood at its top, and the first
+                // scroll saved and synced 0 % over the place read to.
+                let tries = 0;
+                let lastH = 0;
+                (function byFraction() {
+                    const h = document.body.scrollHeight;
+                    if (h === lastH || tries >= 15) {
+                        scrollToProgress(progress);
+                        lastSavedScrollY = window.scrollY;
+                        setTimeout(function() {
+                            postInitialRestored(window.scrollY);
+                        }, 50);
+                    } else {
+                        lastH = h;
+                        tries++;
+                        setTimeout(byFraction, 100);
+                    }
+                })();
+                return;
             }
             setTimeout(function() {
                 postInitialRestored(window.scrollY);
@@ -296,6 +351,7 @@
                         var xpRect = xpNode.getBoundingClientRect();
                         var xpH = xpRect.height;
                         lastKnownElementFraction = xpH > 0 ? Math.max(0, -xpRect.top) / xpH : 0;
+                        lastKnownElementLead = Math.max(0, xpRect.top);
                     }
                 }
                 lastSavedScrollY = window.scrollY;
@@ -387,6 +443,33 @@
     // The settings that only say how the page answers a tap or a key:
     // read when the event comes, with nothing to lay out or paint.
     var _behaviourKeys = { invertTapZones: 1, pageTapZone: 1, scrollAnimation: 1, nativeLineKeys: 1, pageTransition: 1 };
+
+    // The settings that only colour the page (CR #1135): the paper and the
+    // ink, the links, the grain's strength and its dark wash, the pages'
+    // brightness, Norton's palette. A change of these alone takes the
+    // whole road still — every sheet carries its colour — but without the
+    // dim that hides a re-lay: there is no re-lay to hide, and a slider
+    // dragged through them blinked the page at every step.
+    var _colourKeys = { bgColor: 1, textColor: 1, linkColor: 1, pageTextureOpacity: 1, pageTextureDark: 1,
+                        pagesBrightness: 1, tintMonoImages: 1, nortonInk: 1, nortonPlate: 1, nortonHit: 1,
+                        nortonHitInk: 1 };
+    var _holdDim = false;
+
+    function onlyChanged(before, after, keys) {
+        if (!before || !after) return false;
+        var own = Object.prototype.hasOwnProperty;
+        var changed = false, key;
+        for (key in after) {
+            if (!own.call(after, key)) continue;
+            if (JSON.stringify(after[key]) === JSON.stringify(before[key])) continue;
+            if (!keys[key]) return false;
+            changed = true;
+        }
+        for (key in before) {
+            if (own.call(before, key) && !own.call(after, key)) return false;
+        }
+        return changed;
+    }
 
     // True when `after` differs from `before` and only in those.
     function behaviourAloneChanged(before, after) {
@@ -940,15 +1023,26 @@
 
     /// The reader's half of the flip: the page lands on the neighbouring
     /// spread at once, under the leaf.
-    function turnPageInstant(direction) {
-        if (!isPaged()) return;
+    ///
+    /// Says whether the page turned (the 1.9 audit): a second press before
+    /// the first turn has landed is measured from the page not yet left —
+    /// at the last page but one it passes `flipHandled`'s edge check, and
+    /// the host drew a turn between two pictures of the same page. The
+    /// host puts such a turn away (`startPageFlip`).
+    /// - Parameter vertical: the turn went on the vertical axis — sent
+    ///   unmirrored (`flipHandled`), so it is not mirrored back. Mirrored
+    ///   back all the same, Space, Return and ↓ turned a book read right
+    ///   to left BACK under the slide, the sink and the cards (CR #1136).
+    function turnPageInstant(direction, vertical) {
+        if (!isPaged()) return false;
         healPagedLayoutIfStale();
         computeTotalPages();
         // The host's direction is the one it animated — visual (see flipHandled).
-        if (pagesRTL()) direction = -direction;
+        if (pagesRTL() && !vertical) direction = -direction;
         var target = currentPage + direction;
-        if (target < 0 || target > totalPages - 1) return;
+        if (target < 0 || target > totalPages - 1) return false;
         goToPage(target, true);
+        return true;
     }
 
     var separatorBaseOpacity = 1; // set in applyPageSeparator per mode
@@ -1217,6 +1311,14 @@
     /// do. Swift still gets the derived page numbers for the UI, but the
     /// saved/synced xpath+progress stay the user's.
     function reportPagePosition(updateAnchor) {
+        // The PAGED reporter only (the 1.9 audit, 22.11.2026). In scroll
+        // mode the page count is 1, «the whole book is on screen» — and
+        // the report said 100 %, a scrollLeft for the scroll's place and
+        // the paged finder's path: Cancel on the position card stored a
+        // book as finished, and where the page had not moved the scroll
+        // reporter never corrected it. Scroll mode says its jumps through
+        // `reportScrollJump`.
+        if (!isPaged()) return;
         // A user-action report caught in churn must not derive from the
         // live layout (#272 audit): goToPage schedules this up to 350ms
         // out, and a turn-then-switch-apps gesture lets the timer fire
@@ -1568,6 +1670,20 @@
     function applyPagingCSS() {
         _lastLaidW = window.innerWidth;
         _lastLaidH = window.innerHeight;
+        // The last page's sentinel is parked AT ONCE (the 1.9 audit,
+        // 22.11.2026). It is placed again a frame later
+        // (`adjustLastPagePadding`), and until then it stood at the OLD
+        // layout's far edge — so a restore run in between (a resize's, a
+        // sheet's hold, the return from the background) counted the old
+        // layout's pages: with the columns grown taller the book is
+        // shorter, and a place kept by its fraction — a page with a
+        // picture at its top has no path — landed pages ahead, and was
+        // saved there.
+        var parked = document.getElementById('_cr_paged_right_sentinel');
+        if (parked) {
+            if (nativeRTLText()) { parked.style.left = 'auto'; parked.style.right = '-10000px'; }
+            else { parked.style.right = 'auto'; parked.style.left = '-10000px'; }
+        }
         var sheet = document.getElementById('_paging_override');
         if (!sheet) {
             sheet = document.createElement('style');
@@ -1598,6 +1714,7 @@
         document.body.style.touchAction = _ta;
 
         _pagedGutters = [];
+        _ornamentStand = null;
         if (!isPaged()) {
             _appliedPagingW = 0;
             _appliedPagingH = 0;
@@ -1785,13 +1902,27 @@
         // direction.
         var pagesBodyWidth = 0;
         if (_pages) {
-            colGap = N > 1 ? 4 : 0;
+            // The gap between a spread's pages is the separator's room
+            // (CR #1138; user, 22.11.2026: «разделитель нормально не
+            // применяется в манге»): a hairline's 4 px held a line, and a
+            // shadow, an ornament or a wave — 40 px drawn over the gutter —
+            // lay over the pictures' edges. Now the gutter is as wide as
+            // what stands in it. The reading line stands in the first.
+            var sepRoom = { none: 4, line: 4, progress: 14, gap: 24, shadow: 28, ornament: 40, ornamentWave: 40 };
+            colGap = N > 1 ? (sepRoom[pageSeparatorMode] || 4) : 0;
             colWidth = Math.floor((contentAreaFull - (N - 1) * colGap) / N);
             padRemainder = contentAreaFull - N * colWidth - (N - 1) * colGap;
             contentArea = contentAreaFull - padRemainder;
             _pagePitch = contentArea + colGap;
             var slots = layoutPages(N);
             pagesBodyWidth = Math.max(1, Math.ceil(slots / N)) * _pagePitch - colGap;
+        }
+
+        // The patterned strips' room (#1176), at this column's width.
+        if (_ornament && !_pages) {
+            var ornRoom = ornamentRoom(colWidth);
+            if (ornamentWants('top')) vPadTop = Math.max(vPadTop, ornRoom);
+            if (ornamentWants('bottom')) vPadBottom = Math.max(vPadBottom, ornRoom);
         }
 
         // Column height = viewport minus top + bottom clearance,
@@ -1926,6 +2057,14 @@
             }
         }
         _pagedGutters = gutters;
+        // Where the strips stand (#1176): over each column's own text, in
+        // the middle of the clearance the page came to.
+        _ornamentStand = { top: vPadTop, bottom: vPadBottom, lead: Math.max(0, (lh - fs) / 2), columns: [] };
+        var ornX = pad + (nativeRTLText() ? 0 : padRemainder);
+        for (var oc = 0; oc < N; oc++) {
+            _ornamentStand.columns.push({ x: ornX + oc * (colWidth + colGap), w: colWidth });
+        }
+        drawOrnament();
         applyPageSeparator(gutters, vPadTop, colHeight);
         reportPagingColumns();
         // A frame's boxes seam on these gutters (#866): re-lay them now
@@ -1951,7 +2090,18 @@
         // Fix: schedule an absolutely-positioned 1×1 invisible sentinel
         // past the last column's right edge so scrollWidth grows to
         // include the missing padding. Doesn't touch column layout.
-        requestAnimationFrame(function() { adjustLastPagePadding(pad); });
+        requestAnimationFrame(function() {
+            adjustLastPagePadding(pad);
+            // The last page's room is there now: a restore that reached
+            // that page before it — the sentinel parked — was held short
+            // by the pad. Put on its place; nothing else is touched.
+            if (!isPaged() || document.hidden) return;
+            var want = pageToX(currentPage);
+            var off = Math.abs(document.documentElement.scrollLeft - want);
+            if (off > 1 && off <= pad + 2) {
+                window.scrollTo({ left: want, top: 0, behavior: 'instant' });
+            }
+        });
     }
 
     function adjustLastPagePadding(pad) {
@@ -1994,7 +2144,12 @@
         // Force reflow so scrollWidth reflects the parked sentinel.
         void document.body.offsetWidth;
 
-        var scrollW = document.body.scrollWidth;
+        // The SCROLLER's width, not the body's (#1134): Firefox counts the
+        // trailing padding into the body's scrollWidth though the scroll
+        // range ends before it, so by the body the deficit came out 0, the
+        // sentinel stayed parked and the last page stood the pad short.
+        // WebKit and Chromium give the two the same number here.
+        var scrollW = document.documentElement.scrollWidth;
         // pageW must be the SAME pitch goToPage/getCurrentPage use —
         // i.e. _pagePitch, not innerWidth. With non-trivial body padding
         // or odd innerWidth values, _pagePitch differs from innerWidth
@@ -2034,6 +2189,9 @@
     var _pageTextureOpacity = 0.5;
     var _pageTextureDark = false;
     var _pageTextureOn = false;
+    /// A ruled paper (CR #1139): it stands still, page and ground in one
+    /// phase; any other paper moves with the text in scroll mode.
+    var _pageTextureStill = false;
     var _pageTextureBuiltKey = '';   // src + dark + strength the current wash was built for
     var _pageBgColor = '';           // the page colour, painted under the wash
     var _pageTextureBuiltURL = '';   // the wash, as a data URL
@@ -2053,6 +2211,8 @@
         if (!_pageTextureOn || !_pageTextureSrc) {
             if (el) el.remove();
             root.backgroundImage = '';
+            root.backgroundAttachment = '';
+            phasePagePaper();
             if (_pages && lastAppliedSettings) applyPagesTint(lastAppliedSettings);
             return;
         }
@@ -2087,14 +2247,33 @@
             if (el) el.remove();
             root.backgroundImage = 'url("' + _pageTextureBuiltURL + '")';
             root.backgroundRepeat = 'repeat';
+            // A ruled paper stands still (CR #1139), in the ground's phase.
+            root.backgroundAttachment = _pageTextureStill ? 'fixed' : '';
             if (lastAppliedSettings) applyPagesTint(lastAppliedSettings);
+            phasePagePaper();
+            watchPaperHeight();
             return;
         }
         root.backgroundImage = '';
+        root.backgroundAttachment = '';
         if (!el) {
             el = document.createElement('div');
             el.id = '_cr_page_texture';
             document.documentElement.appendChild(el);
+        }
+        // Any paper but a ruled one moves WITH the text in scroll mode (CR
+        // #1139; user, 13.11.2026: «скролл разрушает эффект "текстурная
+        // бумага"»): a layer the document's height, in the document's
+        // phase. A ruled one stands, as do the pages' — a seam at the
+        // page's edge against the reader's ground is the price, and a
+        // line shows it, a grain hardly does.
+        if (!isPaged() && !_pageTextureStill) {
+            el.style.cssText = 'position: absolute; left: 0; top: 0; width: 100%; z-index: -1; pointer-events: none; ' +
+                'height: ' + paperHeight() + 'px; ' +
+                (_pageBgColor ? 'background-color: ' + _pageBgColor + '; ' : '') +
+                'background-image: url("' + _pageTextureBuiltURL + '"); background-repeat: repeat; background-position: 0 0;';
+            watchPaperHeight();
+            return;
         }
         // The page colour under the wash, on the div itself (2026-09-17):
         // the web view draws no background of its own and the root's
@@ -2105,6 +2284,51 @@
             (_pageBgColor ? 'background-color: ' + _pageBgColor + '; ' : '') +
             'background-image: url("' + _pageTextureBuiltURL + '"); background-repeat: repeat; background-position: 0 0;';
         if (_pages && lastAppliedSettings) applyPagesTint(lastAppliedSettings);
+    }
+
+    /// The document's height, for the paper that moves with it.
+    function paperHeight() {
+        return Math.max(document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0,
+                        window.innerHeight);
+    }
+
+    /// The moving paper follows the document as it grows — pictures load,
+    /// a reflow — and shrinks back.
+    var _paperWatch = null;
+    function watchPaperHeight() {
+        if (_paperWatch || !window.ResizeObserver || !document.body) return;
+        _paperWatch = new ResizeObserver(function() {
+            // The pages of pictures move as the strip is laid anew.
+            phasePagePaper();
+            var el = document.getElementById('_cr_page_texture');
+            if (!el || el.style.position !== 'absolute') return;
+            el.style.height = '0px';
+            el.style.height = paperHeight() + 'px';
+        });
+        _paperWatch.observe(document.body);
+    }
+
+    /// The pages of a book of pictures carry the paper themselves (a blend
+    /// sees only its own group, #996) — each from its OWN top-left, so a
+    /// line began anew under every page (user, 22.11.2026). In the
+    /// document's phase now, as the root's paper; a ruled paper stands
+    /// still in the viewport's, as the root's does then.
+    function phasePagePaper() {
+        if (!_pages) return;
+        var pages = document.querySelectorAll('._cr_page');
+        var still = _pageTextureStill || !_pageTextureOn;
+        var sx = window.scrollX, sy = window.scrollY;
+        for (var i = 0; i < pages.length; i++) {
+            var page = pages[i];
+            if (still) {
+                page.style.backgroundPosition = '';
+                page.style.backgroundAttachment = _pageTextureOn ? 'fixed' : '';
+                continue;
+            }
+            var r = page.getBoundingClientRect();
+            page.style.backgroundAttachment = '';
+            page.style.backgroundPosition = (-(r.left + sx)) + 'px ' + (-(r.top + sy)) + 'px';
+        }
     }
 
     /// The tile's grain as a wash: per pixel, |luma − 128| becomes the
@@ -2194,6 +2418,15 @@
         var base = 'position:fixed;left:0;right:0;pointer-events:none;z-index:9500;background:' + _scrollMaskBgColor + ';transform:translateZ(0);-webkit-backface-visibility:hidden;will-change:transform;';
         topMask.style.cssText = base + 'top:0;height:' + topH + 'px;';
         botMask.style.cssText = base + 'bottom:0;height:' + botH + 'px;';
+        // Under a patterned strip (#1176) the lines fade out: there is no
+        // rule there for one to be cut against.
+        if (_ornament) {
+            var fade = function (el, to) {
+                el.style.webkitMaskImage = el.style.maskImage = 'linear-gradient(' + to + ', #000 calc(100% - 12px), transparent)';
+            };
+            if (ornamentWants('top')) { topMask.style.height = (topH + 8) + 'px'; fade(topMask, 'to bottom'); }
+            if (ornamentWants('bottom')) { botMask.style.height = (botH + 8) + 'px'; fade(botMask, 'to top'); }
+        }
     }
 
     function removeScrollMasks() {
@@ -2238,7 +2471,9 @@
         // Under the Norton frame the NC double-line boxes already separate the
         // pages and cap the top — the line/shadow separator + top rule just
         // add stray lines down the gutters and across the top, so suppress them.
-        var hasNorton = !!document.getElementById('_norton_border');
+        // The patterned strips (#1176) are a frame here, but for Comfort's:
+        // its gutters part on their own whatever stands over the columns.
+        var hasNorton = !!document.getElementById('_norton_border') || (!!_ornament && !_comfort);
 
         // The first gutter's separator and the others' (#864): nothing to
         // draw only when both say none. A frame's boxes separate on their
@@ -2572,6 +2807,12 @@
     let lastSavedScrollY = -1;
     let lastKnownXpath = null;
     let lastKnownElementFraction = 0; // fraction of xpath element above viewport top
+    // …or, where the element begins BELOW the top — a picture or a gap
+    // over it — by how many px (the 1.9 audit, 22.11.2026). The fraction
+    // was clamped at 0 there, and a settings change or a resize put the
+    // paragraph at the very top: the picture gone, the page a quarter of
+    // a screen off.
+    let lastKnownElementLead = 0;
     let isResizing = false;
     let isInitialRestorePending = false;
     // #649 r2 — true once the INITIAL restore has actually landed. Before
@@ -2695,8 +2936,107 @@
     var scrollProgressLastFire = 0;
     var SCROLL_PROGRESS_THROTTLE_MS = 500;
 
+    // A jump the script itself made in scroll mode, said at once and in
+    // full (the 1.9 audit). The settle report says a place only once the
+    // page has moved 20 px from the last one said — and a jump that
+    // stamped `lastSavedScrollY` itself was never said at all: after Read
+    // Aloud the stored path stayed where the listening began, and the
+    // book reopened there.
+    function reportScrollJump() {
+        if (isPaged() || document.hidden) return;
+        lastSavedScrollY = -1e9;
+        fireScrollReport();
+    }
+
+    // The place while the page is still MOVING (the 1.9 audit, 22.11.2026).
+    // A place is said in full only once the page has been still for a
+    // quarter of a second (longer after the arrow keys, never while one is
+    // held) — so a resize, a sheet's hold or the app's leaving that came
+    // sooner worked from the stop BEFORE: fling several screens and turn
+    // the iPad at once, and the page went back to where the fling began,
+    // and that was then saved. One hit test a few times a second keeps
+    // what stands at the screen's top; whoever needs the place before the
+    // settle takes it (`commitFlightPlace`).
+    var _flight = null;
+    var _flightAt = 0;
+    function noteFlightPlace() {
+        var now = Date.now();
+        if (now - _flightAt < 150) return;
+        _flightAt = now;
+        var scrollH = document.body.scrollHeight;
+        var total = scrollH - window.innerHeight;
+        var text = getFirstVisibleTextNodeFast();
+        var el = text ? text.parentNode : null;
+        var fraction = 0, lead = 0;
+        if (el && el.getBoundingClientRect) {
+            var r = el.getBoundingClientRect();
+            fraction = r.height > 0 ? Math.max(0, -r.top) / r.height : 0;
+            lead = Math.max(0, r.top);
+        }
+        _flight = {
+            node: el, fraction: fraction, lead: lead, scrollY: window.scrollY,
+            progress: total > 0 ? Math.min(1.0, Math.max(0.0, window.scrollY / total)) : 0,
+            viewportRatio: scrollH > 0 ? window.innerHeight / scrollH : 1
+        };
+    }
+
+    /// The place the page was moving through becomes the known one, and
+    /// is said — from what was noted while the page was real: nothing is
+    /// read off the layout here, which at a resize or a hide is no longer
+    /// the reader's (#272).
+    function commitFlightPlace() {
+        var f = _flight;
+        _flight = null;
+        if (!f || isPaged() || !_initialRestoreDone) return;
+        // Said already: the settle report has been since.
+        if (Math.abs(f.scrollY - lastSavedScrollY) <= 20) return;
+        var xpath = (f.node && f.node.isConnected) ? getXPath(f.node) : '/html/body';
+        // A genuine move, as the full report has it (#82).
+        invalidateStickyAnchor();
+        lastSavedScrollY = f.scrollY;
+        lastKnownXpath = xpath;
+        lastKnownProgress = f.progress;
+        lastKnownElementFraction = f.fraction;
+        lastKnownElementLead = f.lead;
+        if (window.webkit && window.webkit.messageHandlers.positionUpdate) {
+            window.webkit.messageHandlers.positionUpdate.postMessage({
+                xpath: xpath, charOffset: 0, scrollY: f.scrollY,
+                progress: f.progress, viewportRatio: f.viewportRatio
+            });
+        }
+    }
+    // The app left with the page still moving: the settle report will not
+    // come (a hidden page says nothing), and a process ended there lost
+    // the last fling.
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) return;
+        commitFlightPlace();
+        // Where the scroll stood as the page was hidden, and the window
+        // it stood in (`_hideScrollY`, the return pass).
+        if (!isPaged() && _initialRestoreDone && !isResizing) {
+            _hideScrollY = window.scrollY;
+            _hideW = window.innerWidth;
+            _hideH = window.innerHeight;
+        } else {
+            _hideScrollY = null;
+        }
+    });
+    // Scroll mode's own repair on the return (the 1.9 audit, 22.11.2026).
+    // Paged mode puts its anchor back there; scroll mode did nothing —
+    // and the system lays a hidden page out at other sizes for its
+    // snapshots: at a wider one the book is shorter, the scroll is cut to
+    // its end, and back at the true size a reader in the book's last part
+    // stood pages before the place. The same window as at the hide and
+    // another scroll, with no travel asked for in between (a jump, a
+    // place from another device, new settings — each forgets this), is
+    // that: the scroll goes back where it stood.
+    var _hideScrollY = null, _hideW = 0, _hideH = 0;
+
     function fireScrollReport() {
         scrollTrailingTimer = null;
+        // The settle says the place itself: what was noted on the way is
+        // of no use after it.
+        _flight = null;
         // A trailing timer scheduled before the document went hidden can
         // fire during the backgrounding snapshot window — the layout it
         // would read is the snapshot's, not the user's (#272).
@@ -2724,6 +3064,7 @@
                 var rect = pos.node.getBoundingClientRect();
                 var h = rect.height;
                 lastKnownElementFraction = h > 0 ? Math.max(0, -rect.top) / h : 0;
+                lastKnownElementLead = Math.max(0, rect.top);
             }
             if (window.webkit && window.webkit.messageHandlers.positionUpdate) {
                 var scrollH = pos.scrollHeight || document.body.scrollHeight;
@@ -2793,6 +3134,8 @@
         // relayout, not the user — never let it into position state (#272).
         if (document.hidden) return;
 
+        if (!isPaged()) noteFlightPlace();
+
         if (!_nativeKeyHeld) {
             var now = Date.now();
             var elapsed = now - scrollProgressLastFire;
@@ -2828,6 +3171,7 @@
     var _resizeAnchorXpath = null;
     var _resizeAnchorProgress = 0;
     var _resizeAnchorFraction = 0;
+    var _resizeAnchorLead = 0;
     var _resizeAnchorCleanup = null;
     /// When the frozen anchor was written (#291): orphaned anchors (release
     /// timer killed by visibility churn) must not be trusted forever.
@@ -2862,6 +3206,7 @@
             _resizeAnchorXpath = null;
             _resizeAnchorProgress = 0;
             _resizeAnchorFraction = 0;
+            _resizeAnchorLead = 0;
             _pagedFlipAnchorHold = false;
         }, ms);
     }
@@ -2877,6 +3222,8 @@
     /// The initial restore owns the anchor until it has finished, so this
     /// leaves it alone until then.
     function clearPendingAnchor() {
+        // A travel asked for: the hide's place is no longer the place.
+        _hideScrollY = null;
         if (isInitialRestorePending) return;
         _pendingAnchor = null;
         _pendingAnchorProgress = 0;
@@ -2888,6 +3235,7 @@
         _resizeAnchorXpath = null;
         _resizeAnchorProgress = 0;
         _resizeAnchorFraction = 0;
+        _resizeAnchorLead = 0;
         clearTimeout(_resizeAnchorCleanup);
     }
 
@@ -2907,7 +3255,7 @@
     // of ignoring the resize: the same anchor the visible path takes,
     // restored once the layout settles, and silent — none of the dim, the
     // blur or the reports, which is what the freeze was protecting.
-    var _frozenHoldXpath = null, _frozenHoldProgress = 0, _frozenHoldFraction = 0;
+    var _frozenHoldXpath = null, _frozenHoldProgress = 0, _frozenHoldFraction = 0, _frozenHoldLead = 0;
     var _frozenHoldTimer = null;
 
     function clearFrozenHold() {
@@ -2916,15 +3264,19 @@
         _frozenHoldXpath = null;
         _frozenHoldProgress = 0;
         _frozenHoldFraction = 0;
+        _frozenHoldLead = 0;
     }
 
     function holdFrozenPlace() {
         if (document.hidden) return;
         // Taken ONCE per burst, before the relayout has moved anything.
         if (_frozenHoldXpath === null) {
+            // The place the page was moving through, if it had not stopped.
+            commitFlightPlace();
             _frozenHoldXpath = lastKnownXpath;
             _frozenHoldProgress = lastKnownProgress;
             _frozenHoldFraction = lastKnownElementFraction;
+            _frozenHoldLead = lastKnownElementLead;
         }
         clearTimeout(_frozenHoldTimer);
         _frozenHoldTimer = setTimeout(function() {
@@ -2932,6 +3284,7 @@
             var xp = _frozenHoldXpath || lastKnownXpath;
             var pr = _frozenHoldXpath ? _frozenHoldProgress : lastKnownProgress;
             var fr = _frozenHoldFraction;
+            var ld = _frozenHoldLead;
             try {
                 if (isPaged()) {
                     applyPagingCSS();
@@ -2941,7 +3294,7 @@
                     var node = getNodeByXPath(xp);
                     if (node) {
                         var rect = node.getBoundingClientRect();
-                        window.scrollTo(0, rect.top + window.scrollY + fr * rect.height);
+                        window.scrollTo(0, rect.top + window.scrollY + fr * rect.height - ld);
                     }
                 }
             } catch (e) {
@@ -2950,6 +3303,13 @@
             clearFrozenHold();
         }, 160);
     }
+
+    // The blur over a resize is WebKit's and Firefox's: Chromium paints a
+    // body filter over every column of the book — seconds of a blocked
+    // main thread per resize in pages mode (#1134: 2.5–3.5 s against
+    // 0.13 s on a 750 KB book). There the dimming alone; a WKWebView's and
+    // Safari's user agent carry neither word.
+    var _resizeBlur = !/Chrom(e|ium)\//.test(navigator.userAgent);
 
     function onResize() {
         // Cheap, and the only witness to a reflow nobody asked for: the
@@ -2979,11 +3339,15 @@
             }
             return;
         }
+        // The place the page was moving through, if it had not stopped
+        // yet (`commitFlightPlace`): the last one SAID is the stop before.
+        commitFlightPlace();
         // Freeze position ONCE at the start of the resize sequence
         if (!_resizeAnchorXpath) {
             _resizeAnchorXpath = lastKnownXpath;
             _resizeAnchorProgress = lastKnownProgress;
             _resizeAnchorFraction = lastKnownElementFraction;
+            _resizeAnchorLead = lastKnownElementLead;
             _resizeAnchorFrozenAt = Date.now();
         }
         clearTimeout(_resizeAnchorCleanup);
@@ -3000,7 +3364,7 @@
             clearTimeout(_applySafetyTimer);
             document.body.style.transition = 'none';
             document.body.style.opacity = '0.15';
-            document.body.style.filter = 'blur(6px)';
+            if (_resizeBlur) document.body.style.filter = 'blur(6px)';
         }
 
         clearTimeout(resizeTimer);
@@ -3060,18 +3424,37 @@
                     var rect = node.getBoundingClientRect();
                     var absTop = rect.top + window.scrollY;
                     var offset = _resizeAnchorFraction * rect.height;
-                    window.scrollTo(0, absTop + offset);
+                    window.scrollTo(0, absTop + offset - _resizeAnchorLead);
                 }
+            } else if (_resizeAnchorProgress > 0) {
+                // No element to hold by (a strip of pictures; a picture
+                // over the screen's top at the last report): by the
+                // fraction, as a settings change does. Left in pixels, a
+                // strip turned on the iPad stood a fifth of the way read
+                // off its place, and the next scroll saved that (the 1.9
+                // audit).
+                var total = document.body.scrollHeight - window.innerHeight;
+                if (total > 0) window.scrollTo(0, _resizeAnchorProgress * total);
             }
           } catch (e) {
             jsLog('resize pass failed: ' + e);
           } finally {
             isResizing = false;
+            // The size this pass laid the page out for — in SCROLL mode
+            // too. Written by `applyPagingCSS` alone, which a resize in
+            // scroll mode never runs, it kept an older size there: every
+            // sheet's closing (`setResizeFrozen(false)`) then saw «the
+            // window has changed», ran a resize pass against the anchor
+            // of before the sheet, and put the page back — Go To in the
+            // iPad's fullscreen scroll mode travelled and came back (the
+            // 1.9 audit).
+            _lastLaidW = window.innerWidth;
+            _lastLaidH = window.innerHeight;
 
             // Unblur and fade back in
             document.body.style.transition = 'opacity 0.2s ease, filter 0.2s ease';
             document.body.style.opacity = '1';
-            document.body.style.filter = 'blur(0px)';
+            if (_resizeBlur) document.body.style.filter = 'blur(0px)';
             setTimeout(function() {
                 document.body.style.transition = '';
                 document.body.style.filter = '';
@@ -3092,7 +3475,7 @@
                 isResizing = false;
                 document.body.style.transition = 'opacity 0.2s ease, filter 0.2s ease';
                 document.body.style.opacity = '1';
-                document.body.style.filter = 'blur(0px)';
+                if (_resizeBlur) document.body.style.filter = 'blur(0px)';
                 setTimeout(function() {
                     document.body.style.transition = '';
                     document.body.style.filter = '';
@@ -3236,6 +3619,16 @@
             if (el.dataset && el.dataset.footnoteId) {
                 return el;
             }
+            // An in-book link that is no note's marker: a contents page's
+            // entry, a cross-reference, a Kindle book's note link — the
+            // converters write `<a href="#id">` for these on purpose, and
+            // a click on one did nothing: the reader cancels every link's
+            // navigation, and this handler knew markers alone (the 1.9
+            // audit, 22.11.2026). The handler below travels to its target.
+            if (el.tagName === 'A') {
+                var link = el.getAttribute('href') || '';
+                if (link.length > 1 && link.charAt(0) === '#') return el;
+            }
             el = el.parentElement;
         }
         return null;
@@ -3287,7 +3680,8 @@
         var off = lum > 128 ? -18 : 30;
         var popupBg = 'rgb(' + Math.max(0,Math.min(255,r+off)) + ',' + Math.max(0,Math.min(255,g+off)) + ',' + Math.max(0,Math.min(255,b+off)) + ')';
         // Norton/Terminal theme: Turbo Vision dialog style
-        var isNorton = !!document.getElementById('_norton_border');
+        // Norton's own box, not any frame (a plain one wore its plate).
+        var isNorton = _frameLegends;
         if (isNorton) {
             popup.style.background = _nortonColors.plate;
             popup.style.color = '#000000';
@@ -3442,8 +3836,10 @@
             // Only genuine user drift qualifies — during a resize/settings
             // reflow or while hidden (app-switch snapshot churn) the scroll
             // events are layout side effects, and snapping there would
-            // stamp a garbage page into position state (#272).
-            if (isResizing || document.hidden) return;
+            // stamp a garbage page into position state (#272). Nor under
+            // a sheet's hold (`_resizeFrozen`): its keyboard re-lays the
+            // columns, and that layout is not the reader's either.
+            if (isResizing || document.hidden || _resizeFrozen) return;
             // Nor a turn on its way (2026-10-24): a frame stalled past
             // 120 ms mid-slide is not drift, and snapping there stops
             // the turn short of its spread.
@@ -3570,6 +3966,13 @@
             return;
         }
 
+        // ⇧Space goes back, as in scroll mode (the 1.9 audit: it turned
+        // the page forward here).
+        if (e.key === ' ' && e.shiftKey) {
+            e.preventDefault();
+            prevPage(true);
+            return;
+        }
         switch (e.key) {
             case ' ':         // Space
             case 'Enter':     // Return
@@ -4232,11 +4635,8 @@
 
     function searchClear() {
         searchMarks.forEach(function(mark) {
-            var parent = mark.parentNode;
-            if (parent) {
-                parent.replaceChild(document.createTextNode(mark.textContent), mark);
-                parent.normalize();
-            }
+            (mark._crParts || []).forEach(unwrapOwn);
+            unwrapOwn(mark);
         });
         searchMarks = [];
         searchCurrentIndex = -1;
@@ -4256,80 +4656,163 @@
         try { return /[\p{L}\p{N}_]/u.test(ch); } catch (e) { return /\w/.test(ch); }
     }
 
+    /// What a hit does not run out of: a paragraph, or what stands for one.
+    var SEARCH_BLOCKS = 'p, div, li, td, th, dd, dt, pre, blockquote, h1, h2, h3, h4, h5, h6, '
+        + 'section, article, figcaption, caption';
+
+    /// The hit in hand lit or put out — every mark of it.
+    function lightHit(index, on) {
+        var mark = searchMarks[index];
+        if (!mark) return;
+        [mark].concat(mark._crParts || []).forEach(function(part) {
+            if (on) part.classList.add('_cr_search_current');
+            else part.classList.remove('_cr_search_current');
+        });
+    }
+
     function searchFind(query, caseSensitive, skipNavigate, wholeWord) {
         searchClear();
-        if (!query || query.length < 2) return 0;
+        // One character is a query where a character is a word (the 1.9
+        // audit: «龍» in a Chinese book was «No matches»); two at the
+        // least elsewhere.
+        if (!query) return 0;
+        if (query.length < 2 && !(query.codePointAt(0) >= 0x2E80)) return 0;
 
-        var normalizedQuery = caseSensitive ? query : query.toLowerCase();
-        var walker = document.createTreeWalker(
-            document.body,
-            NodeFilter.SHOW_TEXT,
-            null
-        );
+        // What is compared is the text as it READS (the 1.9 audit,
+        // 22.11.2026): a paragraph's text nodes joined — «he said
+        // <em>this</em> aloud» holds «said this» — and every run of white
+        // characters one space: a no-break space, a line end left in the
+        // source, the indent of a hard-wrapped line. Matched one text
+        // node at a time on the raw text, the reader found fewer hits
+        // than the library's search for the same phrase, and a jump by
+        // the hit's number went to a later one, or to none.
+        var white = function(ch) {
+            return ch === ' ' || ch === '\u00a0' || ch === '\n' || ch === '\r' || ch === '\t';
+        };
+        var read = function(t) {
+            return (caseSensitive ? t : t.toLowerCase()).replace(/[ \u00a0\n\r\t]+/g, ' ');
+        };
+        var needle = read(query);
+        if (!needle || needle === ' ') return 0;
 
-        var textNodes = [];
+        // The text nodes by the block they stand in: a hit does not run
+        // from one paragraph into the next.
+        var runs = [];
+        var run = null;
+        var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
         var node;
         while (node = walker.nextNode()) {
-            var haystack = caseSensitive ? node.textContent : node.textContent.toLowerCase();
-            if (haystack.indexOf(normalizedQuery) !== -1) {
-                textNodes.push(node);
+            // Not what no page shows: the notes' store at the body's end
+            // and their popup (hits there were counted — «1 of 13» — and
+            // Next stood still on them, their ticks at the place read),
+            // a script's or a style's text.
+            var holder = node.parentNode;
+            if (!holder || !holder.closest) continue;
+            if (holder.closest('#_cr_footnotes, #_cr_footnote_popup, script, style')) continue;
+            var block = holder.closest(SEARCH_BLOCKS) || document.body;
+            if (!run || run.block !== block) {
+                run = { block: block, nodes: [] };
+                runs.push(run);
             }
+            run.nodes.push(node);
         }
 
-        // Wrap matches in <mark> tags.
-        // Forward iteration is required for correct navigation order.
-        // Earlier version used `for (i = length-1; i >= 0; i--)` + a final
-        // `searchMarks.reverse()` — the intent was top-down across text
-        // nodes, but the global `.reverse()` ALSO flipped the order
-        // within each node (pushes within a node are left-to-right, so
-        // global reverse makes them right-to-left). Symptom: a paragraph
-        // with N matches navigated last → first inside the paragraph,
-        // looking like jumps "down then back up" each time the user
-        // crossed paragraph boundaries. Forward iteration here, with no
-        // final reverse, gives the correct top-down + left-to-right
-        // order. (DOM mutations don't invalidate cached `textNode`
-        // references — replaceChild only affects the target node, not
-        // its siblings — so there's no traversal-safety reason to
-        // process bottom-up.)
-        for (var i = 0; i < textNodes.length; i++) {
-            var textNode = textNodes[i];
-            var text = textNode.textContent;
-            var normalizedText = caseSensitive ? text : text.toLowerCase();
-            var parent = textNode.parentNode;
-            if (!parent) continue;
+        // Wrap matches in <mark> tags, in the order they are read: a hit
+        // is its first mark; where it runs through a tag's edge, the rest
+        // of it are marks of their own, kept on the first (`_crParts`).
+        var hits = [];
+        for (var r = 0; r < runs.length; r++) {
+            var nodes = runs[r].nodes;
+            // The cheap look first: most paragraphs hold nothing.
+            var joined = '';
+            for (var n = 0; n < nodes.length; n++) joined += nodes[n].textContent;
+            if (read(joined).indexOf(needle) === -1) continue;
 
-            var frag = document.createDocumentFragment();
-            var lastIdx = 0;
-            var pos = normalizedText.indexOf(normalizedQuery);
+            // The text as compared, each of its characters knowing the
+            // node and the place it came from.
+            var text = '';
+            var fromNode = [];
+            var fromOffset = [];
+            var lastWhite = false;
+            for (var n2 = 0; n2 < nodes.length; n2++) {
+                var raw = nodes[n2].textContent;
+                for (var o = 0; o < raw.length; o++) {
+                    var ch = raw.charAt(o);
+                    if (white(ch)) {
+                        if (lastWhite) continue;
+                        text += ' ';
+                        fromNode.push(n2);
+                        fromOffset.push(o);
+                        lastWhite = true;
+                    } else {
+                        // A character whose lower case is longer than
+                        // itself keeps every part on its own place (#215).
+                        var low = caseSensitive ? ch : ch.toLowerCase();
+                        for (var q = 0; q < low.length; q++) {
+                            text += low.charAt(q);
+                            fromNode.push(n2);
+                            fromOffset.push(o);
+                        }
+                        lastWhite = false;
+                    }
+                }
+            }
 
+            var pieces = [];
+            for (var n3 = 0; n3 < nodes.length; n3++) pieces.push([]);
+            var pos = text.indexOf(needle);
             while (pos !== -1) {
+                var end = pos + needle.length;
                 // Whole-word mode: skip a hit glued to a letter/digit on
                 // either side (charAt(-1) is '' and '' is not a word char).
-                if (wholeWord && (isWordChar(normalizedText.charAt(pos - 1)) ||
-                                  isWordChar(normalizedText.charAt(pos + normalizedQuery.length)))) {
-                    pos = normalizedText.indexOf(normalizedQuery, pos + 1);
+                if (wholeWord && (isWordChar(text.charAt(pos - 1)) || isWordChar(text.charAt(end)))) {
+                    pos = text.indexOf(needle, pos + 1);
                     continue;
                 }
-                if (pos > lastIdx) {
-                    frag.appendChild(document.createTextNode(text.substring(lastIdx, pos)));
+                var hit = hits.length;
+                hits.push([]);
+                var k = pos;
+                while (k < end) {
+                    var at = fromNode[k];
+                    var last = k;
+                    while (last + 1 < end && fromNode[last + 1] === at) last++;
+                    pieces[at].push({ from: fromOffset[k], to: fromOffset[last] + 1, hit: hit });
+                    k = last + 1;
                 }
-                var mark = document.createElement('mark');
-                mark.className = '_cr_search_match';
-                // `pos` is an index into normalizedText (lowercased); slice with
-                // the NORMALIZED query length so a query char whose lowercase
-                // changes length can't misalign the highlight slice (#215).
-                mark.textContent = text.substring(pos, pos + normalizedQuery.length);
-                frag.appendChild(mark);
-                searchMarks.push(mark);
-                lastIdx = pos + normalizedQuery.length;
-                pos = normalizedText.indexOf(normalizedQuery, lastIdx);
+                pos = text.indexOf(needle, end);
             }
 
-            if (lastIdx < text.length) {
-                frag.appendChild(document.createTextNode(text.substring(lastIdx)));
+            for (var n4 = 0; n4 < nodes.length; n4++) {
+                if (!pieces[n4].length) continue;
+                var textNode = nodes[n4];
+                var parent = textNode.parentNode;
+                if (!parent) continue;
+                var source = textNode.textContent;
+                var frag = document.createDocumentFragment();
+                var lastIdx = 0;
+                for (var c = 0; c < pieces[n4].length; c++) {
+                    var piece = pieces[n4][c];
+                    if (piece.from > lastIdx) {
+                        frag.appendChild(document.createTextNode(source.substring(lastIdx, piece.from)));
+                    }
+                    var mark = document.createElement('mark');
+                    mark.className = '_cr_search_match';
+                    mark.textContent = source.substring(piece.from, piece.to);
+                    frag.appendChild(mark);
+                    hits[piece.hit].push(mark);
+                    lastIdx = piece.to;
+                }
+                if (lastIdx < source.length) {
+                    frag.appendChild(document.createTextNode(source.substring(lastIdx)));
+                }
+                parent.replaceChild(frag, textNode);
             }
-
-            parent.replaceChild(frag, textNode);
+        }
+        for (var h = 0; h < hits.length; h++) {
+            if (!hits[h].length) continue;
+            var first = hits[h][0];
+            if (hits[h].length > 1) first._crParts = hits[h].slice(1);
+            searchMarks.push(first);
         }
 
         // Inject highlight styles
@@ -4343,7 +4826,7 @@
         // in its standard colours"): the NC yellow on the frame's blue,
         // the current one inverted to blue on yellow. The translucent
         // amber of the other themes went brown on the deep blue.
-        var nortonHits = !!document.getElementById('_norton_border');
+        var nortonHits = _frameLegends;
         style.textContent = nortonHits
             ? ('._cr_search_match { background: transparent; color: ' + _nortonColors.hit + ' !important; font-weight: bold; border-radius: 0; }' +
                '._cr_search_current { background: ' + _nortonColors.hit + '; color: ' + _nortonColors.hitInk + ' !important; }')
@@ -4364,7 +4847,7 @@
                 return searchMarks.length;
             }
             searchCurrentIndex = 0;
-            searchMarks[0].classList.add('_cr_search_current');
+            lightHit(0, true);
             if (isPaged()) {
                 goToPage(rectPage(searchMarks[0].getBoundingClientRect()));
             } else {
@@ -4379,11 +4862,11 @@
         if (searchMarks.length === 0) return -1;
 
         if (searchCurrentIndex >= 0 && searchCurrentIndex < searchMarks.length) {
-            searchMarks[searchCurrentIndex].classList.remove('_cr_search_current');
+            lightHit(searchCurrentIndex, false);
         }
 
         searchCurrentIndex = (searchCurrentIndex + delta + searchMarks.length) % searchMarks.length;
-        searchMarks[searchCurrentIndex].classList.add('_cr_search_current');
+        lightHit(searchCurrentIndex, true);
 
         if (isPaged()) {
             goToPage(rectPage(searchMarks[searchCurrentIndex].getBoundingClientRect()));
@@ -4402,10 +4885,10 @@
         if (index < 0 || index >= searchMarks.length) index = 0;
 
         if (searchCurrentIndex >= 0 && searchCurrentIndex < searchMarks.length) {
-            searchMarks[searchCurrentIndex].classList.remove('_cr_search_current');
+            lightHit(searchCurrentIndex, false);
         }
         searchCurrentIndex = index;
-        searchMarks[searchCurrentIndex].classList.add('_cr_search_current');
+        lightHit(searchCurrentIndex, true);
 
         if (isPaged()) {
             goToPage(rectPage(searchMarks[searchCurrentIndex].getBoundingClientRect()));
@@ -4452,6 +4935,23 @@
     /// at once, near or far (user, 2026-11-08: a click on the ruler slid
     /// when the place was on the next spread and jumped when farther, and
     /// read as random). The slide is the page turn's alone.
+    /// Where a jump to `el` should land in scroll mode when the element is
+    /// TALLER than the screen (the 1.9 audit, 22.11.2026): a book that is
+    /// one huge paragraph, a `<pre>`, a block of `<br>` lines. Its top is
+    /// the start of all of it — a place sixty per cent in opened, followed
+    /// and synced back as the first line. Where the fraction falls inside
+    /// such an element, the fraction is the place; -1 otherwise.
+    function topInsideTallAnchor(el, fraction) {
+        if (!el || !el.getBoundingClientRect || !(fraction > 0)) return -1;
+        var r = el.getBoundingClientRect();
+        if (r.height <= window.innerHeight) return -1;
+        var total = document.body.scrollHeight - window.innerHeight;
+        if (total <= 0) return -1;
+        var at = Math.round(total * Math.min(1, fraction));
+        var elTop = r.top + window.scrollY;
+        return (at > elTop && at < elTop + r.height) ? at : -1;
+    }
+
     function scrollToProgress(fraction) {
         clearPendingAnchor();
         if (isPaged()) {
@@ -4541,7 +5041,14 @@
                 scrollToProgress(fallbackProgress);
                 return;
             }
-            goToPage(rectPage(el.getBoundingClientRect()), true);
+            // No measured place yet — a book opened AT a chapter asks
+            // before the chapters are measured (the 1.9 audit): by the
+            // KNOWN scroll, as that measuring itself goes (#140), not the
+            // document's own, which reads stale once the reader has turned
+            // a page.
+            computeTotalPages();
+            var known = Math.max(0, Math.min(rectPage(el.getBoundingClientRect(), pageToX(currentPage)), totalPages - 1));
+            goToPage(known, true);
         } else {
             // A jump: at once (see scrollToProgress).
             var top = el.getBoundingClientRect().top + window.scrollY - scrollTopOffset;
@@ -4616,6 +5123,8 @@
             }
         } else {
             var top = el.getBoundingClientRect().top + window.scrollY - scrollTopOffset;
+            var inside = topInsideTallAnchor(el, fallbackProgress || 0);
+            if (inside >= 0) top = inside;
             window.scrollTo({ top: Math.max(0, top), behavior: instant ? 'instant' : 'smooth' });
         }
     }
@@ -4672,13 +5181,14 @@
         if (!sel || sel.isCollapsed || sel.rangeCount === 0) return '';
         // Check if selection start is within the visible viewport
         var range = sel.getRangeAt(0);
-        var startRect = range.startContainer.nodeType === Node.TEXT_NODE
-            ? (function() { var r = document.createRange(); r.selectNode(range.startContainer); return r.getBoundingClientRect(); })()
-            : range.startContainer.getBoundingClientRect();
-        var viewportTop = 0;
-        var viewportBottom = window.innerHeight;
-        // If selection anchor is outside visible area, ignore it
-        if (startRect.bottom < viewportTop || startRect.top > viewportBottom) {
+        // A selection none of which is on screen is a stale one. By the
+        // selection's OWN rect: by its start node's, a long selection
+        // dragged until its first paragraph left the screen was «no
+        // selection» — Bookmark then saved a place mark quoting the top
+        // of the screen, the selection dropped without a word (the 1.9
+        // audit, 22.11.2026).
+        var selRect = range.getBoundingClientRect();
+        if (selRect.bottom < 0 || selRect.top > window.innerHeight) {
             return '';
         }
         return sel.toString().substring(0, 5000);
@@ -4691,6 +5201,19 @@
         var node = range.startContainer;
         if (node.nodeType === Node.TEXT_NODE) node = node.parentNode;
         var xpath = node ? getXPath(node) : '/html/body';
+        // How far into its paragraph the selection begins — which of two
+        // «Watson» in one paragraph was marked (`highlightTextInElement`).
+        // 0 was always written, and the first was always lit.
+        var startOffset = 0;
+        try {
+            var block = node && node.closest ? (node.closest(MARK_BLOCKS) || node) : null;
+            if (block) {
+                var lead = document.createRange();
+                lead.setStart(block, 0);
+                lead.setEnd(range.startContainer, range.startOffset);
+                startOffset = lead.toString().length;
+            }
+        } catch (e) { startOffset = 0; }
         var rect = range.getBoundingClientRect();
         if (isPaged()) {
             var absLeft = rectStartX(rect);
@@ -4698,7 +5221,7 @@
             var progress = scrollW > 0 ? absLeft / scrollW : 0;
             return {
                 xpath: xpath,
-                charOffset: 0,
+                charOffset: startOffset,
                 scrollY: document.documentElement.scrollLeft,
                 progress: Math.min(1.0, Math.max(0.0, progress))
             };
@@ -4708,13 +5231,19 @@
         var progress = total > 0 ? absTop / total : 0;
         return {
             xpath: xpath,
-            charOffset: 0,
+            charOffset: startOffset,
             scrollY: window.scrollY,
             progress: Math.min(1.0, Math.max(0.0, progress))
         };
     }
 
     // --- Bookmark highlights ---
+
+    /// What a mark is drawn on: a paragraph, or what stands for one. No
+    /// `section` — a chapter whole was tinted for a mark begun in a list
+    /// item or a `<div>` paragraph, and «Bookmark» anywhere in it then
+    /// opened that mark's editor (the 1.9 audit).
+    var MARK_BLOCKS = 'p, h1, h2, h3, h4, h5, h6, blockquote, div.verse, li, td, th, dd, dt, pre, figcaption';
 
     function ensureBookmarkStyle() {
         if (document.getElementById('_cr_bookmark_style')) return;
@@ -4755,17 +5284,19 @@
         }
         // Clear text-level highlights (all color variants)
         var textMarks = document.querySelectorAll('[class*="_cr_bm_text_"]');
-        for (var i = textMarks.length - 1; i >= 0; i--) {
-            var mark = textMarks[i];
-            var parent = mark.parentNode;
-            if (parent) {
-                parent.replaceChild(document.createTextNode(mark.textContent), mark);
-                parent.normalize();
-            }
-        }
+        for (var i = textMarks.length - 1; i >= 0; i--) unwrapOwn(textMarks[i]);
         if (!bookmarks || bookmarks.length === 0) return;
 
-        var paragraphs = document.body.querySelectorAll('p, h1, h2, h3, h4, blockquote, div.verse');
+        var paragraphs = document.body.querySelectorAll(MARK_BLOCKS);
+        // Text as a quote is compared: whitespace runs one space, lower
+        // case — a selection's own text has a line break where the page
+        // has a space or a tag's edge.
+        var norm = function(t) { return (t || '').replace(/\s+/g, ' ').trim().toLowerCase(); };
+        var paragraphText = [];
+        var textOf = function(k) {
+            if (paragraphText[k] === undefined) paragraphText[k] = norm(paragraphs[k].textContent);
+            return paragraphText[k];
+        };
 
         for (var j = 0; j < bookmarks.length; j++) {
             var bm = bookmarks[j];
@@ -4781,30 +5312,44 @@
                     var node = result.singleNodeValue;
                     if (node && node !== document.body) {
                         // If node is a paragraph-level element, use it directly
-                        if (node.matches && node.matches('p, h1, h2, h3, h4, blockquote, div.verse')) {
+                        if (node.matches && node.matches(MARK_BLOCKS)) {
                             target = node;
                         } else {
                             // Find first paragraph inside, or walk up to find parent paragraph
-                            target = node.querySelector('p, h1, h2, h3, h4, blockquote, div.verse');
+                            target = node.querySelector(MARK_BLOCKS);
                             if (!target) {
-                                var up = node.closest('p, h1, h2, h3, h4, blockquote, div.verse, section');
-                                if (up) target = up;
+                                // A paragraph that is a plain `<div>`: itself,
+                                // where it is no chapter's worth of text.
+                                target = node.closest(MARK_BLOCKS)
+                                    || ((node.textContent || '').length <= 4000 ? node : null);
                             }
                         }
                     }
                 } catch(e) { /* skip */ }
             }
 
+            // The path's element is trusted only with the quote in it (the
+            // 1.9 audit, 22.11.2026). After «Replace from File…», another
+            // edition, a re-import in another format, the old path names
+            // some other paragraph — and that one was tinted, jumped to
+            // and ticked on the ruler, the search below never run.
+            var byPath = target;
+            var head = norm(fullText).substring(0, 30);
+            if (target && head.length >= 6 && norm(target.textContent).indexOf(head) === -1) target = null;
+
             // Strategy 2: if xpath didn't work, search all paragraphs for preview text
             if (!target && matchText.length >= 6) {
-                var lowerMatch = matchText.toLowerCase();
+                var lowerMatch = norm(matchText);
                 for (var k = 0; k < paragraphs.length; k++) {
-                    if (paragraphs[k].textContent.toLowerCase().indexOf(lowerMatch) !== -1) {
+                    if (textOf(k).indexOf(lowerMatch) !== -1) {
                         target = paragraphs[k];
                         break;
                     }
                 }
             }
+            // Found nowhere (a quote across two paragraphs, an edition
+            // that reworded it): the path's element, as before.
+            if (!target) target = byPath;
 
             if (!target) continue;
 
@@ -4829,21 +5374,39 @@
             // Multi-paragraph highlight: if text is long (>150 chars), tint all consecutive
             // paragraphs whose text appears in the selection
             if (fullText.length > 150) {
-                var lowerFull = fullText.toLowerCase();
+                var lowerFull = norm(fullText);
                 // Start from target, also check siblings
                 var container = target.parentNode;
-                var siblings = container ? container.querySelectorAll('p, h1, h2, h3, h4, blockquote, div.verse') : [target];
+                var siblings = container ? container.querySelectorAll(MARK_BLOCKS) : [target];
                 var started = false;
+                // Where in the quote the last paragraph was found: the
+                // next one is looked for after it, in the quote's order.
+                var cursor = 0;
                 for (var s = 0; s < siblings.length; s++) {
-                    var sibText = siblings[s].textContent.trim();
-                    if (!sibText) continue;
-                    // Check if this paragraph's text appears in the full selection
-                    if (lowerFull.indexOf(sibText.substring(0, 40).toLowerCase()) !== -1) {
-                        if (!started && siblings[s] === target) started = true;
-                        if (started) tint(siblings[s], 2);
-                    } else if (started) {
-                        break; // stop at first non-matching sibling after target
+                    if (!started) {
+                        // The paragraph the selection BEGAN in, whatever
+                        // its first words: begun in its middle, it never
+                        // «started» and the paragraphs after it were left
+                        // untinted (the 1.9 audit).
+                        if (siblings[s] !== target) continue;
+                        started = true;
+                        tint(target, 2);
+                        var own = norm(target.textContent);
+                        var at = lowerFull.indexOf(own.substring(0, 40));
+                        cursor = at >= 0 ? at + Math.min(own.length, 40) : 0;
+                        continue;
                     }
+                    var sibText = norm(siblings[s].textContent);
+                    if (!sibText) continue;
+                    // A long paragraph by its first words, a short one
+                    // whole — and after the one before it: «— Yes.» below
+                    // the selection is not it because the quote has the
+                    // same two words somewhere higher.
+                    var probe = sibText.length > 40 ? sibText.substring(0, 40) : sibText;
+                    var found = lowerFull.indexOf(probe, cursor);
+                    if (found === -1) break;
+                    cursor = found + probe.length;
+                    tint(siblings[s], 2);
                 }
                 // Ensure at least target is highlighted
                 if (!target.classList.contains('_cr_bookmarked_' + colorIdx)) tint(target, 2);
@@ -4851,7 +5414,7 @@
             }
 
             // Short text: try to highlight exact text within the element
-            if (matchText.length >= 6 && highlightTextInElement(target, fullText, colorIdx, bm.id)) {
+            if (matchText.length >= 6 && highlightTextInElement(target, fullText, colorIdx, bm.id, bm.charOffset || 0)) {
                 continue;
             }
             // Fallback: tint the whole element
@@ -4859,15 +5422,33 @@
         }
     }
 
-    function highlightTextInElement(element, text, colorIdx, markId) {
+    /// `nearOffset` — how far into the element the selection began
+    /// (`getSelectionPosition`): of several places the words stand in, the
+    /// nearest to it is the mark's. 0 — a mark from before it was kept —
+    /// is the first, as it always was.
+    function highlightTextInElement(element, text, colorIdx, markId, nearOffset) {
         var lowerText = text.toLowerCase();
         var walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null);
         var node;
-        // Try to find the text within a single text node first
+        // The words within a single text node, every place they stand in.
+        var best = null;
+        var base = 0;
         while (node = walker.nextNode()) {
+            var lower = node.textContent.toLowerCase();
+            var from = 0;
+            var hit;
+            while ((hit = lower.indexOf(lowerText, from)) !== -1) {
+                var distance = Math.abs(base + hit - (nearOffset || 0));
+                if (!best || distance < best.distance) best = { node: node, idx: hit, distance: distance };
+                from = hit + Math.max(1, lowerText.length);
+            }
+            base += lower.length;
+        }
+        if (best) {
+            node = best.node;
             var content = node.textContent;
-            var idx = content.toLowerCase().indexOf(lowerText);
-            if (idx !== -1) {
+            var idx = best.idx;
+            {
                 var before = content.substring(0, idx);
                 var match = content.substring(idx, idx + text.length);
                 var after = content.substring(idx + text.length);
@@ -4950,9 +5531,9 @@
     // rebuild restores it the way a fullscreen toggle's onResize used to (#94).
     /// What a style adds to the bare box (#866). Notched: no CSS border —
     /// an SVG rectangle whose corners curve inward (the ticket frame),
-    /// drawn to the box's own size, twice, a hair apart. Vintage: a
-    /// flourish in each corner, one drawing mirrored four ways, over the
-    /// double rule.
+    /// drawn to the box's own size, twice, a hair apart. (A vintage frame,
+    /// a flourish in each corner, stood here until 24.11.2026: the floral
+    /// corners are to come as a border, #1175.)
     function dressFrame(boxes, style, inkRGB) {
         if (style === 'notched') {
             boxes.forEach(function (box) {
@@ -5005,26 +5586,113 @@
                 svg += '<g fill="rgba(' + inkRGB + ',0.09)" stroke="rgba(' + inkRGB + ',0.42)" stroke-width="1">' + holes + '</g>';
                 box.innerHTML = svg + '</svg>';
             });
-        } else if (style === 'vintage') {
-            // The corner: a stem along each rule curling into a spiral, a
-            // leaf between, a dot at the eye — the vignette frames' corner,
-            // simplified to what a 48-point square can carry.
-            var S = 48;
-            var curl = '<path d="M 46 4 C 30 4, 20 8, 15 16 C 11 22, 14 30, 21 30 C 27 30, 28 24, 23 22 C 19 21, 17 25, 20 27" fill="none" stroke="rgba(' + inkRGB + ',0.7)" stroke-width="1.4" stroke-linecap="round"/>' +
-                '<path d="M 4 46 C 4 30, 8 20, 16 15 C 22 11, 30 14, 30 21 C 30 27, 24 28, 22 23 C 21 19, 25 17, 27 20" fill="none" stroke="rgba(' + inkRGB + ',0.7)" stroke-width="1.4" stroke-linecap="round"/>' +
-                '<path d="M 9 9 C 14 6, 18 8, 20 12 C 16 13, 12 12, 9 9 Z" fill="rgba(' + inkRGB + ',0.55)"/>' +
-                '<circle cx="24" cy="24" r="1.6" fill="rgba(' + inkRGB + ',0.7)"/>';
-            var corners = [['left:-2px;top:-2px;', ''], ['right:-2px;top:-2px;', 'scale(-1,1)'],
-                           ['left:-2px;bottom:-2px;', 'scale(1,-1)'], ['right:-2px;bottom:-2px;', 'scale(-1,-1)']];
-            boxes.forEach(function (box) {
-                var html = '';
-                corners.forEach(function (c) {
-                    html += '<svg xmlns="http://www.w3.org/2000/svg" width="' + S + '" height="' + S + '" viewBox="0 0 ' + S + ' ' + S + '" ' +
-                        'style="position:absolute;' + c[0] + 'overflow:visible;' + (c[1] ? 'transform:' + c[1] + ';' : '') + '">' + curl + '</svg>';
-                });
-                box.innerHTML = html;
-            });
         }
+    }
+
+    // --- The patterned strips (CR #1176) ---
+
+    /// What the settings ask for — the motif as SVG (`PageOrnament`), null
+    /// where there is none.
+    var _ornament = null;
+    /// Where the paged layout put the columns, for the strips over them;
+    /// null in scroll.
+    var _ornamentStand = null;
+    /// The strip's least distance from the page's edge.
+    var ORNAMENT_EDGE = 10;
+
+    function ornamentWants(side) {
+        return !!_ornament && (_ornament.place === 'both' || _ornament.place === side);
+    }
+    function ornamentFontSize() {
+        return parseFloat(getComputedStyle(document.body).fontSize) || 18;
+    }
+    /// A whole number of units on this width, all scaled alike: the size
+    /// follows the text's, and gives way a little to come out even.
+    function ornamentFit(w) {
+        var o = _ornament;
+        var scale = 0.85 * Math.min(1.7, Math.max(0.8, ornamentFontSize() / 18));
+        var n = Math.max(1, Math.round((w / scale - 2 * o.overhang) / o.period));
+        if (o.mirrors) n = Math.max(2, Math.floor((n + 1) / 2) * 2);
+        var k = w / (n * o.period + 2 * o.overhang);
+        return { n: n, k: k, h: o.height * k };
+    }
+    /// From the page's edge to the text.
+    function ornamentRoom(w) {
+        return Math.ceil(ORNAMENT_EDGE + ornamentFit(w).h + 0.7 * ornamentFontSize());
+    }
+    /// Scroll: the strips stand still at the page's edges, the text goes
+    /// under the masks they stand on (`applyScrollMasks`).
+    function layOrnamentInScroll(sheet) {
+        var room = ornamentRoom(ornamentScrollColumn().w);
+        var under = Math.round(room - 0.35 * ornamentFontSize());
+        var css = '';
+        if (ornamentWants('top')) {
+            _nortonTopInset = under;
+            css += ' padding-top: ' + room + 'px !important;';
+        }
+        if (ornamentWants('bottom')) {
+            _nortonBottomInset = under;
+            css += ' padding-bottom: ' + room + 'px !important;';
+        }
+        sheet.textContent = 'body {' + css + ' }';
+    }
+    function ornamentScrollColumn() {
+        var left = parseInt(document.body.style.paddingLeft) || 0;
+        var right = parseInt(document.body.style.paddingRight) || 0;
+        return { x: left, w: Math.max(60, document.documentElement.clientWidth - left - right) };
+    }
+    function drawOrnament() {
+        var old = document.querySelectorAll('html > ._cr_ornament');
+        for (var i = 0; i < old.length; i++) old[i].remove();
+        if (!_ornament || !lastAppliedSettings) return;
+        var paged = isPaged();
+        if (paged && !_ornamentStand) return;
+        var o = _ornament;
+        var columns = paged ? _ornamentStand.columns : [ornamentScrollColumn()];
+        var ink = 'rgb(' + parseColorToRGB(lastAppliedSettings.textColor || '#000000') + ')';
+        ['top', 'bottom'].forEach(function (side) {
+            if (!ornamentWants(side)) return;
+            columns.forEach(function (column, index) {
+                var fit = ornamentFit(column.w);
+                var room = paged ? _ornamentStand[side] + _ornamentStand.lead : 0;
+                var edge = paged ? Math.max(4, (room - fit.h) / 2) : ORNAMENT_EDGE;
+                document.documentElement.appendChild(ornamentStrip(o, fit, column, side, edge, ink, index));
+            });
+        });
+    }
+    function ornamentStrip(o, fit, column, side, edge, ink, index) {
+        var body = '', length = fit.n * o.period, total = length + 2 * o.overhang;
+        o.rails.forEach(function (rail) {
+            body += '<path d="M0 ' + rail[0] + 'H' + total + '" fill="none" stroke-width="' + rail[1] + '"/>';
+        });
+        var id = '_cr_orn_' + side + index;
+        var units = '';
+        for (var i = 0; i < fit.n; i++) {
+            var x = o.overhang + i * o.period;
+            units += o.mirrors && i < fit.n / 2
+                ? '<use href="#' + id + '" transform="translate(' + (x + o.period) + ',0) scale(-1,1)"/>'
+                : '<use href="#' + id + '" x="' + x + '"/>';
+        }
+        if (o.joint) {
+            for (var j = 0; j <= fit.n; j++) body += '<g transform="translate(' + (o.overhang + j * o.period) + ',0)">' + o.joint + '</g>';
+        }
+        if (o.end) {
+            var far = o.overhang + length;
+            body += '<g transform="translate(' + o.overhang + ',0)">' + o.end + '</g>' +
+                '<g transform="translate(' + far + ',' + (o.endTurns ? o.height + ') scale(-1,-1)' : '0) scale(-1,1)') + '">' + o.end + '</g>';
+        }
+        if (o.centre) body += '<g transform="translate(' + (o.overhang + length / 2) + ',0)">' + o.centre + '</g>';
+        var el = document.createElement('div');
+        el.className = '_cr_ornament';
+        // The foot's is the top's upside down: what hangs, hangs to the text.
+        el.style.cssText = 'position:fixed;left:' + column.x + 'px;' + side + ':' + edge.toFixed(1) + 'px;width:' + column.w + 'px;height:' + fit.h.toFixed(2) + 'px;' +
+            'margin:0;padding:0;border:0;pointer-events:none;z-index:9990;opacity:0.62;transform:translateZ(0)' + (side === 'bottom' ? ' scaleY(-1)' : '') + ';' +
+            '-webkit-backface-visibility:hidden;backface-visibility:hidden;will-change:transform;';
+        el.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + total + ' ' + o.height + '" preserveAspectRatio="none" ' +
+            'style="display:block !important;width:' + column.w + 'px !important;height:' + fit.h.toFixed(2) + 'px !important;max-width:none !important;max-height:none !important;margin:0 !important;overflow:visible !important;">' +
+            '<defs><g id="' + id + '">' + o.unit + '</g></defs>' +
+            '<g fill="' + ink + '" stroke="' + ink + '">' + body + units + '</g></svg>';
+        return el;
     }
 
     /// True while the frame wears Norton's legends (#866) — the paged
@@ -5062,6 +5730,7 @@
     function frameStyleFor(settings, nortonActive) {
         if (nortonActive) return 'norton';
         var f = settings && settings.textFrame;
+        if (f === 'ornament' && !(settings && settings.ornament)) return 'none';
         return (f && f !== 'none') ? f : 'none';
     }
     function frameIsOn(settings, nortonActive) {
@@ -5071,9 +5740,9 @@
     /// The text frame (#866): Norton's box — 3px double lines, the title
     /// and the clock on island legends, the Terminal palette — or one of
     /// the theme-independent styles in the theme's own ink: single,
-    /// double, notched (inward-curved corners) and vintage (double rules
-    /// with a flourish in each corner). One box per column, ten points
-    /// in from the page's edges; the legends and the clock are Norton's
+    /// double, notched (inward-curved corners) and perforated; the
+    /// ornament is no box but strips of its own (`drawOrnament`). One box
+    /// per column, ten points in from the page's edges; the legends and the clock are Norton's
     /// alone. The ids stay `_norton_*` — everything that asks "is there a
     /// frame" (the paged insets, the separators, the scroll masks) asks
     /// by them.
@@ -5105,20 +5774,24 @@
         }
 
         var style = frameStyleFor(settings, nortonActive);
-        if (style === 'none') {
+        _ornament = style === 'ornament' ? settings.ornament : null;
+        if (style === 'none' || _ornament) {
             nortonSheet.textContent = '';
             _nortonTopInset = 0;
             _nortonBottomInset = 0;
             _frameLegends = false;
+            _frameTextGap = 0;
+            if (_ornament && !isPaged()) layOrnamentInScroll(nortonSheet);
+            drawOrnament();
             return;
         }
+        drawOrnament();
         var legends = style === 'norton';
         _frameLegends = legends;
         // The air between the frame and the text (#866, user): the same
-        // on every side, and more for the vintage flourishes, which reach
-        // some forty points into the box from each corner. Norton keeps
-        // its own measures.
-        _frameTextGap = legends ? 0 : ((style === 'vintage' || style === 'perforated') ? 36 : 24);
+        // on every side, and more for the perforated sheet's strips of
+        // holes. Norton keeps its own measures.
+        _frameTextGap = legends ? 0 : (style === 'perforated' ? 36 : 24);
 
         // One NC box per column (#864): the count the page settled on
         // in applyPagingCSS; the trailing rebuild re-asserts it once the
@@ -5398,7 +6071,9 @@
             } else {
                 scrollToProgress(progress || 0);
             }
-            setTimeout(function() { reportPagePosition(true); }, 60);
+            setTimeout(function() {
+                if (isPaged()) reportPagePosition(true); else reportScrollJump();
+            }, 60);
         },
         setResizeFrozen: function(frozen) {
             _resizeFrozen = !!frozen;
@@ -5470,7 +6145,7 @@
         nextPage: function(vertical) { nextPage(vertical); },
         scrollPage: function(direction) { scrollPage(direction); },
         prevPage: function(vertical) { prevPage(vertical); },
-        turnPageInstant: function(direction) { turnPageInstant(direction); },
+        turnPageInstant: function(direction, vertical) { turnPageInstant(direction, !!vertical); },
         /// The turn, resolved once the new spread is painted (#1045): a
         /// page of pictures decodes late, and the snapshot the turn draws
         /// with took the old frame — the new page arrived wearing the old
@@ -5526,9 +6201,9 @@
             var height = parseFloat(cs.height) || (window.innerHeight - top);
             return { cellW: w, cellH: h, lefts: lefts, colWidth: colWidth, top: top, height: height };
         },
-        turnPageInstantPainted: function(direction) {
-            turnPageInstant(direction);
-            return new Promise(function (resolve) { whenPagePainted(function () { resolve(true); }); });
+        turnPageInstantPainted: function(direction, vertical) {
+            var turned = turnPageInstant(direction, !!vertical);
+            return new Promise(function (resolve) { whenPagePainted(function () { resolve(turned); }); });
         },
         scrollByLine: function(direction) { scrollByLine(direction); },
         goToPage: function(idx) { goToPage(idx); },
@@ -5570,7 +6245,7 @@
                         }
                     } else {
                         elems[i].scrollIntoView({block: 'start'});
-                        lastSavedScrollY = window.scrollY;
+                        reportScrollJump();
                     }
                     highlightVoiceReaderTarget(elems[i]);
                     return true;
@@ -5856,7 +6531,13 @@
                 for (var i = 0; i < ids.length; i++) {
                     var el = document.getElementById(ids[i]);
                     if (!el) continue;
-                    var top = el.getBoundingClientRect().top + window.scrollY;
+                    // Where a jump to the chapter LANDS — the heading under
+                    // the bar's clearance (`scrollTopOffset`), not at the
+                    // screen's very top: by the heading's own top, a jump
+                    // to chapter 5 stood a hair before chapter 5's place,
+                    // and in a short book the list lit chapter 4 (the
+                    // 1.9 audit).
+                    var top = Math.max(0, el.getBoundingClientRect().top + window.scrollY - scrollTopOffset);
                     var progress = total > 0 ? top / total : 0;
                     results.push({ id: ids[i], progress: Math.min(1.0, Math.max(0.0, progress)) });
                 }
@@ -6044,6 +6725,9 @@
             if (!isResizing) liftStuckDim();
         },
         applySettings: function(settings) {
+            // New settings may lay the page out anew: the hide's scroll is
+            // no place to go back to (`_hideScrollY`).
+            _hideScrollY = null;
             // Nothing but how the page BEHAVES has changed (CR #1115): the
             // tap zones and their mirroring, the slide between pages, the
             // arrows' scrolling. These are variables read when a tap or a
@@ -6061,6 +6745,8 @@
                 if (typeof settings.nativeLineKeys === 'boolean') nativeLineKeys = settings.nativeLineKeys;
                 return;
             }
+            // Colour alone: the road without the dim (`_colourKeys`).
+            _holdDim = !isResizing && onlyChanged(lastAppliedSettings, settings, _colourKeys);
             try {
                 this._applySettingsImpl(settings);
             } catch (e) {
@@ -6192,6 +6878,7 @@
                 _resizeAnchorXpath = anchor;
                 _resizeAnchorProgress = anchorProgress;
                 _resizeAnchorFraction = lastKnownElementFraction;
+                _resizeAnchorLead = lastKnownElementLead;
                 _resizeAnchorFrozenAt = Date.now();
             }
 
@@ -6260,6 +6947,7 @@
             if (typeof settings.pageTextureOpacity === 'number') _pageTextureOpacity = settings.pageTextureOpacity;
             if (typeof settings.pageTextureDark === 'boolean') _pageTextureDark = settings.pageTextureDark;
             if (typeof settings.pageTextureOn === 'boolean') _pageTextureOn = settings.pageTextureOn;
+            if (typeof settings.pageTextureStill === 'boolean') _pageTextureStill = settings.pageTextureStill;
             // The wash is applied below, AFTER the page colour it paints
             // under itself is taken from these settings — applied here it
             // kept the previous theme's colour (user, 2026-09-23: a theme
@@ -6279,9 +6967,13 @@
             clearTimeout(scrollTrailingTimer);
             scrollTrailingTimer = null;
 
-            // Dim content instantly to hide reflow
-            document.body.style.transition = 'none';
-            document.body.style.opacity = '0.3';
+            // Dim content instantly to hide reflow — not for a change of
+            // colour alone (`_holdDim`): nothing re-flows.
+            if (!_holdDim) {
+                document.body.style.transition = 'none';
+                document.body.style.opacity = '0.3';
+            }
+            _holdDim = false;
 
             // The East (#524, #1019): the book's language, declared or
             // read off its text — and declared on the page when it was not,
@@ -6554,7 +7246,7 @@
                             var rect = node.getBoundingClientRect();
                             var absTop = rect.top + window.scrollY;
                             var offset = lastKnownElementFraction * rect.height;
-                            window.scrollTo(0, absTop + offset);
+                            window.scrollTo(0, absTop + offset - lastKnownElementLead);
                         }
                     } else if (anchorProgress > 0) {
                         // Fallback: progress-based scroll
@@ -6606,6 +7298,7 @@
                     _resizeAnchorXpath = null;
                     _resizeAnchorProgress = 0;
                     _resizeAnchorFraction = 0;
+                    _resizeAnchorLead = 0;
                 } else {
                     // Keep the frozen anchor alive across the whole settings
                     // adjustment burst (#82): the next change within the window
@@ -6736,7 +7429,13 @@
                     // layout this lands on the spread the user left.
                     restorePositionPaged(lastKnownXpath, lastKnownProgress);
                 }
+            } else if (_hideScrollY !== null && window.innerWidth === _hideW && window.innerHeight === _hideH
+                       && Math.abs(window.scrollY - _hideScrollY) > 2) {
+                // Scroll mode: the same window, the scroll moved by no
+                // one's hand — back where it stood (`_hideScrollY`).
+                window.scrollTo(0, _hideScrollY);
             }
+            _hideScrollY = null;
             // Reveal — also clears the hide applied when a snapshot-pass
             // resize was seen while hidden / a dim left by a resize burst.
             _hiddenResizeSeen = false;

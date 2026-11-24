@@ -93,6 +93,8 @@ export function load() {
         if (settings.frame === 'none') settings.frame = 'shadow';
         settings.version = 2;
     }
+    // The vintage frame is gone from the page script; its double rule stays.
+    if (settings.frame === 'vintage') settings.frame = 'double';
     return settings;
 }
 
@@ -122,7 +124,7 @@ export function theme(s, pictures = false) {
     return { bg: palette.bg[index], text, link: palette.link[index], dark };
 }
 
-const textFrames = new Set(['single', 'double', 'notched', 'vintage']);
+const textFrames = new Set(['single', 'double', 'notched']);
 const separators = { shadow: 'shadow', lines: 'line', none: 'none' };
 
 /// What every payload carries, the text's or the pictures'.
