@@ -7,6 +7,30 @@ import { t, resolve } from './i18n.js';
 
 export const news = [
     {
+        date: '2026-11-24',
+        version: '1.8',
+        title: {
+            en: 'Borders',
+            ru: 'Бордюры',
+            uk: 'Бордюри',
+            es: 'Cenefas',
+            fr: 'Frises',
+            de: 'Bordüren',
+            'zh-Hans': '花边',
+            ja: '飾り罫',
+        },
+        text: {
+            en: 'A patterned strip over the text and under it, seven patterns to choose from: Reading settings, Frame, Border. The border replaces the Vintage frame.',
+            ru: 'Узорная полоса над текстом и под ним, семь рисунков на выбор: настройки чтения, Рамка, Бордюр. Бордюр заменил рамку «Винтаж».',
+            uk: 'Візерункова смуга над текстом і під ним, сім візерунків на вибір: налаштування читання, Рамка, Бордюр. Бордюр замінив рамку «Вінтаж».',
+            es: 'Una franja con motivos sobre el texto y debajo de él, con siete motivos para elegir: Ajustes de lectura, Marco, Cenefa. La cenefa sustituye al marco Vintage.',
+            fr: 'Une bande ornée au-dessus et au-dessous du texte, sept motifs au choix : Réglages de lecture, Cadre, Frise. La frise remplace le cadre Vintage.',
+            de: 'Ein gemusterter Streifen über und unter dem Text, sieben Muster zur Wahl: Leseeinstellungen, Rahmen, Bordüre. Die Bordüre ersetzt den Rahmen „Vintage“.',
+            'zh-Hans': '正文上方和下方的花纹带，有七种图案可选：阅读设置、边框、花边。花边取代了“复古”边框。',
+            ja: '本文の上下に入る模様の帯です。模様は七種類から選べます：読書設定、枠、飾り罫。「ヴィンテージ」の枠は飾り罫に置き換わりました。',
+        },
+    },
+    {
         date: '2026-11-13',
         version: '1.8',
         title: {

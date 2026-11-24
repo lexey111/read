@@ -2,6 +2,8 @@
 // browser, and the payload the page script takes (ReaderCore
 // `ReaderSettings.cssInjectionJS`).
 
+import { borders } from './borders.js';
+
 // The family's five palettes, seven tones each, Bright → Void
 // (ReaderCore `ReaderTheme`: bgColor, textColor, linkColor).
 export const palettes = {
@@ -73,7 +75,7 @@ export const defaults = {
     light: 'auto', palette: 'ochre', dayTone: 1, nightTone: 5, nightText: 100, nightPages: 100,
     paper: 'none', paperStrength: 50,
     face: 'serif', size: 18, leading: 0, align: 'justify',
-    layout: 'scroll', columns: '2', turn: 'on', margins: 5, frame: 'shadow',
+    layout: 'scroll', columns: '2', turn: 'on', margins: 5, frame: 'shadow', border: 'vine',
     pagesColumns: '2', transparentPages: true, language: 'auto',
 };
 
@@ -93,8 +95,10 @@ export function load() {
         if (settings.frame === 'none') settings.frame = 'shadow';
         settings.version = 2;
     }
-    // The vintage frame is gone from the page script; its double rule stays.
-    if (settings.frame === 'vintage') settings.frame = 'double';
+    // The vintage frame is gone from the page script; a border is in its
+    // place, as in the apps.
+    if (settings.frame === 'vintage') settings.frame = 'ornament';
+    if (!borders[settings.border]) settings.border = defaults.border;
     return settings;
 }
 
@@ -124,7 +128,7 @@ export function theme(s, pictures = false) {
     return { bg: palette.bg[index], text, link: palette.link[index], dark };
 }
 
-const textFrames = new Set(['single', 'double', 'notched']);
+const textFrames = new Set(['single', 'double', 'notched', 'ornament']);
 const separators = { shadow: 'shadow', lines: 'line', none: 'none' };
 
 /// What every payload carries, the text's or the pictures'.
@@ -203,6 +207,7 @@ export function payload(s, book, width) {
         // round the text, or every gutter alike — a shadow, a line or
         // nothing (the engine's first gutter and the rest set the same).
         textFrame: textFrames.has(s.frame) ? s.frame : 'none',
+        ornament: s.frame === 'ornament' ? borders[s.border] : null,
         pageSeparator: separators[s.frame] ?? 'none',
         pageSeparatorRest: separators[s.frame] ?? 'none',
         textRTL: direction(book) === 'rtl',

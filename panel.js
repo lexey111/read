@@ -4,6 +4,7 @@
 // type, margins or frame).
 
 import { palettes, toneNames, faces, papers, paperNames, ranges, lineHeight, isNight, tone } from './model.js';
+import { borders } from './borders.js';
 import { t, languages } from './i18n.js';
 
 /// A tone's name as a key: «Light» the tone is not «Light» the mode.
@@ -37,7 +38,26 @@ const frames = [
     ['single', 'Rule', '<rect x="4.5" y="4.5" width="27" height="35" rx="0.5"/>'],
     ['double', 'Double rule', '<rect x="3.5" y="3.5" width="29" height="37"/><rect x="6" y="6" width="24" height="32"/>'],
     ['notched', 'Ticket', '<path d="M8 4.5h20a3.5 3.5 0 0 0 3.5 3.5v28a3.5 3.5 0 0 0-3.5 3.5H8A3.5 3.5 0 0 0 4.5 36V8A3.5 3.5 0 0 0 8 4.5z"/>'],
+    ['ornament', 'Border', '<path d="M4.5 6q2.25-3.6 4.5 0t4.5 0 4.5 0 4.5 0 4.5 0 4.5 0M4.5 38q2.25-3.6 4.5 0t4.5 0 4.5 0 4.5 0 4.5 0 4.5 0"/>'],
 ];
+/// The borders' patterns, by the names the apps give them.
+const borderNames = { vine: 'Vine', volutes: 'Scrolls', lozenges: 'Lozenges', braid: 'Braid', meander: 'Meander', guilloche: 'Guilloche', laurel: 'Laurel' };
+/// A strip of the pattern, `width` by its scale: a whole number of units,
+/// as the page script lays it (`ornamentStrip`).
+function borderStrip(id, width, scale) {
+    const o = borders[id];
+    let n = Math.max(1, Math.round((width / scale - 2 * o.overhang) / o.period));
+    if (o.mirrors) n = Math.max(2, Math.floor((n + 1) / 2) * 2);
+    const length = n * o.period, total = length + 2 * o.overhang, far = o.overhang + length;
+    const at = (x, shapes) => (shapes ? `<g transform="translate(${x},0)">${shapes}</g>` : '');
+    const rails = o.rails.map(([y, w]) => `<path d="M0 ${y}H${total}" fill="none" stroke-width="${w}"/>`).join('');
+    const units = Array.from({ length: n }, (_, i) => (o.mirrors && i < n / 2
+        ? `<g transform="translate(${o.overhang + (i + 1) * o.period},0) scale(-1,1)">${o.unit}</g>`
+        : at(o.overhang + i * o.period, o.unit))).join('');
+    const joints = o.joint ? Array.from({ length: n + 1 }, (_, i) => at(o.overhang + i * o.period, o.joint)).join('') : '';
+    const ends = o.end ? at(o.overhang, o.end) + `<g transform="translate(${far},${o.endTurns ? `${o.height}) scale(-1,-1` : '0) scale(-1,1'})">${o.end}</g>` : '';
+    return `<svg viewBox="0 0 ${total} ${o.height}" style="width: ${width}px; height: ${(o.height * width / total).toFixed(2)}px">${rails}${joints}${ends}${at(o.overhang + length / 2, o.centre)}${units}</svg>`;
+}
 /// One column of text inside the rule, or two with the gutter between.
 const frameTile = (drawing, kind) => `<svg viewBox="0 0 36 44">${kind === 'two'
     ? '<defs><linearGradient id="gutterShade"><stop offset="0" stop-color="currentColor" stop-opacity="0"/><stop offset="0.5" stop-color="currentColor" stop-opacity="0.35"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs><g class="lines"><path d="M6 12h9M6 17h9M6 22h9M6 27h9M6 32h6M21 12h9M21 17h9M21 22h9M21 27h9M21 32h6"/></g>'
@@ -101,6 +121,8 @@ export function settingsPanel(dialog, { settings, onChange, onReset, onLanguage,
         row('Grain', slider('paperStrength', ranges.paperStrength, 'Paper grain'), { 'data-grain': '' }),
         row('Frame', element('div', { class: 'frames', role: 'radiogroup', 'data-setting': 'frame' }, ...frames.map(([id, name, drawing, kind]) =>
             element('button', { type: 'button', role: 'radio', 'data-value': id, title: t(name), 'aria-label': t(name), innerHTML: frameTile(drawing, kind) }))), { 'data-text': '' }),
+        row('Pattern', element('div', { class: 'borders', role: 'radiogroup', 'data-setting': 'border' }, ...Object.keys(borders).map((id) =>
+            element('button', { type: 'button', role: 'radio', 'data-value': id, title: t(borderNames[id]), 'aria-label': t(borderNames[id]), innerHTML: borderStrip(id, 48, 0.5) }))), { 'data-border': '' }),
         row('Margins', slider('margins', ranges.margins, 'Margins'), { 'data-text': '' }));
 
     const footer = element('footer', {},
@@ -215,6 +237,7 @@ export function settingsPanel(dialog, { settings, onChange, onReset, onLanguage,
         for (const node of dialog.querySelectorAll('[data-pdf]')) node.hidden = !pdf;
         for (const node of dialog.querySelectorAll('[data-turning]')) node.hidden = shown.layout === 'scroll';
         dialog.querySelector('[data-grain]').hidden = settings.paper === 'none';
+        dialog.querySelector('[data-border]').hidden = pictures || settings.frame !== 'ornament';
         for (const key of dialog.querySelectorAll('[data-setting="columns"] button')) key.hidden = pictures && +key.dataset.value > 2;
         dialog.querySelector('[data-setting="layout"] [data-value="scroll"]').textContent = t(pictures ? 'Strip' : 'Scroll');
     }
