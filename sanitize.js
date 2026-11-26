@@ -40,4 +40,19 @@ export function sanitize(root) {
             else if ((name === 'href' || name === 'src' || name === 'xlink:href') && isScriptURL(attribute.value)) node.removeAttribute(attribute.name);
         }
     }
+    markBreaks(root);
+}
+
+/// A row of stars between two parts of a text (a dinkus, an asterism:
+/// «* * *», «⁂», Carroll's three rows of them) stands in the middle, as it
+/// does in print; the book's own margins for it are not kept, and a
+/// paragraph's indent and justification pulled it to the left (user,
+/// 26.11.2026). Stars and spaces alone, a line break between rows.
+const starsOnly = /^[\s*⁂✱✲✳✻✽❋]+$/u;
+export function markBreaks(root) {
+    for (const node of root.querySelectorAll('p, div, h1, h2, h3, h4, h5, h6')) {
+        if ([...node.children].some((child) => child.localName !== 'br')) continue;
+        const text = node.textContent;
+        if (text.trim() && starsOnly.test(text)) node.classList.add('_nano_stars');
+    }
 }

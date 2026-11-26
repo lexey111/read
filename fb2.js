@@ -5,6 +5,7 @@
 // write markup of its own.
 
 import { page } from './template.js';
+import { markBreaks } from './sanitize.js';
 import { decode, looksRightToLeft } from './bytes.js';
 
 // Entities HTML knows and XML does not, met in files typed by hand.
@@ -204,6 +205,7 @@ export function convertFB2(bytes) {
     const named = titled.filter((chapter) => chapter.title);
     const chapters = named.length >= 2 ? named : titled.map((chapter, index) => ({ id: chapter.id, title: chapter.title || `Chapter ${index + 1}` }));
 
+    markBreaks(main);
     const body = main.innerHTML + (notes.children.length ? '\n' + notes.outerHTML : '');
     const css = `blockquote.epigraph { border-left: 3px solid #ccc; padding-left: 1em; }
         .footnote-ref { font-size: 0.85em; }

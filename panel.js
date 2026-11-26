@@ -3,7 +3,7 @@
 // settings and shows what the open book has (a book of pictures has no
 // type, margins or frame).
 
-import { palettes, toneNames, faces, papers, paperNames, ranges, lineHeight, isNight, tone } from './model.js';
+import { palettes, toneNames, faces, papers, paperNames, ranges, lineHeight, isNight, tone, lightOf, duskColours } from './model.js';
 import { borders } from './borders.js';
 import { t, languages } from './i18n.js';
 
@@ -79,11 +79,14 @@ export function settingsPanel(dialog, { settings, onChange, onReset, onLanguage,
 
     const colour = element('section', {},
         element('h3', { text: t('Colour') }),
-        row('Light', segmented('light', [['auto', 'Auto'], ['day', 'Day'], ['night', 'Night']])),
+        row('Light', segmented('light', [['auto', 'Auto'], ['day', 'Day'], ['dusk', 'Twilight'], ['night', 'Night']])),
         row('Palette', element('div', { class: 'swatches', id: 'palettes' })),
         element('div', { class: 'when', 'data-when': 'day' },
             row('Day', element('div', { class: 'slider tone' }, element('input', { type: 'range', min: 0, max: 6, step: 1, 'data-slider': 'dayTone', 'aria-label': t('Day tone') }), element('output', { 'data-output': 'dayTone' }))),
             elsewhere('Applies in day mode.', 'day')),
+        element('div', { class: 'when', 'data-when': 'dusk' },
+            row('Twilight', element('div', { class: 'slider tone dusk' }, element('input', { type: 'range', min: 0, max: 2, step: 1, 'data-slider': 'duskTone', 'aria-label': t('Twilight tone') }), element('output', { 'data-output': 'duskTone' }))),
+            elsewhere('Applies in twilight mode.', 'dusk')),
         element('div', { class: 'when', 'data-when': 'night' },
             row('Night', element('div', { class: 'slider tone' }, element('input', { type: 'range', min: 0, max: 6, step: 1, 'data-slider': 'nightTone', 'aria-label': t('Night tone') }), element('output', { 'data-output': 'nightTone' }))),
             row('Text at night', slider('nightText', ranges.nightText, 'Text brightness at night'), { 'data-text': '' }),
@@ -110,8 +113,9 @@ export function settingsPanel(dialog, { settings, onChange, onReset, onLanguage,
         row('Columns', segmented('columns', [['1', '1'], ['2', '2'], ['3', '3'], ['4', '4']]), { 'data-turning': '' }),
         row('Page turn', segmented('turn', [['on', 'Slide'], ['off', 'At once']]), { 'data-turning': '' }),
         row('Direction', element('div', { class: 'segmented', role: 'radiogroup', 'data-setting': 'direction' },
-            element('button', { type: 'button', role: 'radio', 'data-value': 'ltr', text: `${t('Left to right')} →` }),
-            element('button', { type: 'button', role: 'radio', 'data-value': 'rtl', text: `← ${t('Right to left')}` }))));
+            // The arrows say it; the words are their names.
+            element('button', { type: 'button', role: 'radio', class: 'arrow', 'data-value': 'ltr', text: '→', title: t('Left to right'), 'aria-label': t('Left to right') }),
+            element('button', { type: 'button', role: 'radio', class: 'arrow', 'data-value': 'rtl', text: '←', title: t('Right to left'), 'aria-label': t('Right to left') }))));
 
     const sheet = element('section', {},
         element('h3', { text: t('Page') }),
@@ -151,6 +155,7 @@ export function settingsPanel(dialog, { settings, onChange, onReset, onLanguage,
         paperStrength: (v) => `${v}%`,
         dayTone: (v) => t(toneKey(v)),
         nightTone: (v) => t(toneKey(v)),
+        duskTone: (v) => t(['Mid', 'Dusk', 'Deep'][v] || 'Dusk'),
     };
 
     dialog.addEventListener('input', (event) => {
@@ -182,7 +187,7 @@ export function settingsPanel(dialog, { settings, onChange, onReset, onLanguage,
     // say) when that gives the look asked for.
     let returnTo = null;
     function show(light) {
-        const back = returnTo !== null && (isNight({ light: returnTo }) ? 'night' : 'day') === light ? returnTo : null;
+        const back = returnTo !== null && lightOf({ light: returnTo }) === light ? returnTo : null;
         returnTo = back === null ? settings.light : null;
         onChange('light', back ?? light);
         dialog.querySelector(`[data-when="${light}"] input`)?.focus();
@@ -223,9 +228,11 @@ export function settingsPanel(dialog, { settings, onChange, onReset, onLanguage,
             element('button', { type: 'button', class: settings.palette === id ? 'swatch chosen' : 'swatch', 'data-palette': id, title: t(palette.name), 'aria-label': t(palette.name), text: 'Aa', style: `background: ${palette.bg[index]}; color: ${palette.text[index]}` })));
         const palette = palettes[settings.palette];
         const stops = palette.bg.map((bg, i) => `${bg} ${(i / 7 * 100).toFixed(2)}% ${((i + 1) / 7 * 100).toFixed(2)}%`).join(', ');
-        for (const input of dialog.querySelectorAll('.tone input')) input.style.setProperty('--track', `linear-gradient(to right, ${stops})`);
+        for (const input of dialog.querySelectorAll('.tone:not(.dusk) input')) input.style.setProperty('--track', `linear-gradient(to right, ${stops})`);
+        const dusk = [0, 1, 2].map((step, i) => `${duskColours(palette, step).bg} ${(i / 3 * 100).toFixed(2)}% ${((i + 1) / 3 * 100).toFixed(2)}%`).join(', ');
+        dialog.querySelector('.tone.dusk input')?.style.setProperty('--track', `linear-gradient(to right, ${dusk})`);
         // The other light's settings, muted, with a word on why.
-        const now = isNight(settings) ? 'night' : 'day';
+        const now = lightOf(settings);
         for (const block of dialog.querySelectorAll('[data-when]')) {
             const away = block.dataset.when !== now;
             block.classList.toggle('away', away);

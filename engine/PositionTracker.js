@@ -556,6 +556,20 @@
     /// Comfort's strip over the foot of the page, in px (#1041) — 0 where
     /// the page has a bar of its own below it.
     var _comfortStrip = 0;
+    /// Three and four columns with the padding as the gap between them,
+    /// as Comfort has it, for a reader whose margins are its own (the web
+    /// reader, NanoReader: user, 26.11.2026 — twice the margin between
+    /// three columns was a hole). Off unless the payload asks.
+    var _columnsGapIsPad = false;
+    /// The gap between three or four columns. The flag's is a few px past
+    /// the pad: the whole-px remainder stands at the leading edge, and the
+    /// last column of the spread before ends at `pad + remainder − gap` —
+    /// on the screen by the remainder when the gap is the pad alone.
+    function columnsGap(pad) {
+        if (_comfort) return Math.max(40, pad);
+        if (_columnsGapIsPad) return Math.max(40, pad + 4);
+        return Math.max(40, 2 * pad);
+    }
     /// A book of pictures (#945): `{ rtl, strip, firstAlone }` from the
     /// settings, null for a text book. Paged, a page a column, spreads of
     /// two; right to left when `rtl` — the columns run right to left and
@@ -609,7 +623,7 @@
         // past two take the pad as the gap, and a capacity counted with
         // twice that gap said "two" where three fit.
         var wantedN = parseInt(pagingColumnsWanted, 10) || 2;
-        var gap = _comfort && wantedN > 2 ? Math.max(40, pad) : Math.max(40, 2 * pad);
+        var gap = wantedN > 2 ? columnsGap(pad) : Math.max(40, 2 * pad);
         var cap = Math.max(1, Math.floor((contentArea + gap) / (columnsMinWidth() + gap)));
         if (columnsNeedLandscape && window.innerWidth <= window.innerHeight) cap = 1;
         cap = Math.min(4, cap);
@@ -1867,7 +1881,7 @@
             // Two columns are a SPREAD (user): the outer margins are
             // repeated twice at the centre, as a book's are — the classic
             // 2·pad. Three and four are columns: the gap is the pad.
-            colGap = _comfort && N > 2 ? Math.max(40, pad) : Math.max(40, 2 * pad);
+            colGap = N > 2 ? columnsGap(pad) : Math.max(40, 2 * pad);
             // colWidth for CSS must be an integer pixel value; floor.
             colWidth = Math.floor((contentArea - (N - 1) * colGap) / N);
             padRemainder = contentArea - N * colWidth - (N - 1) * colGap;
@@ -5413,8 +5427,13 @@
                 continue;
             }
 
-            // Short text: try to highlight exact text within the element
-            if (matchText.length >= 6 && highlightTextInElement(target, fullText, colorIdx, bm.id, bm.charOffset || 0)) {
+            // Short text: try to highlight exact text within the element.
+            // Under six letters a quote is everywhere, and the paragraph is
+            // tinted — unless the mark says its words are exact and where
+            // they began (`exact`, the web reader and NanoReader, user
+            // 26.11.2026: «they» tinted a paragraph whole): the place
+            // nearest `charOffset` is the mark's.
+            if ((matchText.length >= 6 || (bm.exact && matchText.length > 0)) && highlightTextInElement(target, fullText, colorIdx, bm.id, bm.charOffset || 0)) {
                 continue;
             }
             // Fallback: tint the whole element
@@ -7107,6 +7126,7 @@
             // Comfort (#915) settles the padding itself, from the measure.
             _comfort = settings.comfort || null;
             _comfortStrip = Number(settings.comfortStrip) || 0;
+            _columnsGapIsPad = !!settings.columnsGapIsPad;
             var padPx = settings.padding;
             if (_comfort) {
                 padPx = comfortPadding(settings.navigationMode === 'page', settings.pageColumns);

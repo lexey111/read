@@ -8,19 +8,26 @@
 
 import { convert, formats, accept } from './book.js';
 import { download, linkIn } from './link.js';
-import { load, save, defaults, payload, theme, mix, direction, pictureStrip, turning, paged, onSystemLight } from './model.js';
+import { load, save, defaults, payload, theme, mix, direction, pictureStrip, turning, paged, onSystemLight, isNight, isDark, isDusk, palettes } from './model.js';
 import { renderApps } from './apps.js';
 import { ornament } from './ornament.js';
 import { version } from './version.js';
 import { renderNews, latest } from './news.js';
 import { settingsPanel } from './panel.js';
 import { progressBar } from './progress.js';
+import { bookDrawer, make } from './drawer.js';
+import { bookMarks } from './marks.js';
+import { floatingDrawer } from './aside-host.js';
+import { desk, openDesk, noteOpened, noteLoaded, noteClosed, beginReading, endReading, touch, clock } from './desk.js';
+import { deskHome } from './desk-home.js';
 import { t, setLanguage, resolve, problem, languages, language } from './i18n.js';
-import { shelf, keep, refresh, forget, hasRoom, slots } from './store.js';
-import { desktop, appName, booksFromSystem, linksGoOutside } from './desktop.js';
+import { shelf, places, keep, refresh, forget, hasRoom, slots } from './store.js';
+import { desktop, appName, booksFromSystem, linksGoOutside, pickFile, fileAt, setMenu, onMenu, toggleWindowFull, watchWindowFull, watchDrag, dressWindow, programVersion, windowFor } from './desktop.js';
 
 const $ = (id) => document.getElementById(id);
 const frame = $('page');
+/// The window with no book open: the browser's leaf, or the program's.
+const home = desktop ? $('deskHome') : $('home');
 const settings = load();
 // Opened from the site: its language and light come along in the address
 // (?lang=ru&light=night), are kept as the reader's own, and leave the
@@ -29,7 +36,7 @@ const settings = load();
     const asked = new URLSearchParams(location.search);
     const lang = asked.get('lang'), light = asked.get('light');
     if (lang && (lang in languages || lang === 'auto')) settings.language = lang;
-    if (['auto', 'day', 'night'].includes(light)) settings.light = light;
+    if (['auto', 'day', 'dusk', 'night'].includes(light)) settings.light = light;
     if (lang || light) {
         save(settings);
         history.replaceState(null, '', location.pathname + location.hash);
@@ -39,8 +46,11 @@ setLanguage(resolve(settings.language));
 
 let book = null;
 let restored = false;
+/// The drawer's own window on the desk (aside-host.js); null in a browser.
+let aside = null;
 /// The page's last report: where the reader is, how many pages there are.
 let place = { progress: 0, currentPage: 0, totalPages: 0 };
+let spreadColumns = 1;
 /// Pages for the bar's bubble where the page does not count them: a text
 /// in scroll at the family's 1800 characters a page.
 let estimatedPages = 0;
@@ -70,20 +80,36 @@ function receive(name, body) {
             }));
         }
         place = {
+            xpath: restored ? body.xpath || '' : place.xpath,
+            scrollY: restored ? body.scrollY || 0 : place.scrollY,
             progress: restored ? body.progress || 0 : place.progress,
             currentPage: body.currentPage ?? place.currentPage,
             totalPages: body.totalPages ?? place.totalPages,
         };
         showPosition();
+        marks?.stand();
+        break;
+    case 'pageLayout':
+        // The columns of a spread: the line under the page counts them, the
+        // page script's turns count spreads.
+        spreadColumns = Math.max(1, Number(body?.columns) || 1);
         break;
     case 'positionRestored':
         restored = true;
         frame.style.opacity = '1';
         busy(null);
+        marks?.paint();
+        takeAfterOpening();
         if (book?.pdf?.asked && !$('pdfAsk').open) askPDF();
         break;
     case 'toggleFullscreen':
         toggleFullscreen();
+        break;
+    case 'selectionChanged':
+        marks?.selection(body);
+        break;
+    case 'userActivity':
+        touch();
         break;
     case 'pageFlip':
         turn(body);
@@ -127,7 +153,25 @@ async function turn({ direction: way, vertical, kind }) {
     }
 }
 
+/// The chapters' places, for the status line's name of the one the reader
+/// is in: asked of the page once a layout, not at every report.
+let chapterPlaces = null;
+function showChapter() {
+    if (!desktop) return;
+    const tracker = frame.contentWindow?.PositionTracker;
+    if (!book?.chapters?.length || !restored || !tracker) { $('position').title = ''; return; }
+    const width = frame.clientWidth;
+    if (!chapterPlaces || chapterPlaces.key !== book.key || chapterPlaces.width !== width || chapterPlaces.pages !== place.totalPages) {
+        const at = new Map(JSON.parse(tracker.getChapterPositions(book.chapters.map((chapter) => chapter.id))).map((one) => [one.id, one.progress]));
+        chapterPlaces = { key: book.key, width, pages: place.totalPages, list: book.chapters.filter((chapter) => at.has(chapter.id)).map((chapter) => [at.get(chapter.id), chapter.title]) };
+    }
+    let name = '';
+    for (const [at, title] of chapterPlaces.list) if (at <= place.progress + 0.0005) name = title;
+    $('position').title = name;
+}
+
 function showPosition() {
+    showChapter();
     const percent = Math.round(place.progress * 100) + ' %';
     const turns = turning(settings, book) && place.totalPages > 0;
     // A phone gives the bar the room: the per cent alone.
@@ -166,10 +210,16 @@ async function show(next) {
     $('title').textContent = book.author ? `${book.title} — ${book.author}` : book.title;
     $('position').textContent = '';
     $('contentsDoor').hidden = !(book.chapters && book.chapters.length > 1);
-    $('home').hidden = true;
+    $('searchDoor').hidden = !!book.pages;
+    $('marksDoor').hidden = !marks || !!book.pages;
+    home.hidden = true;
     $('reader').hidden = false;
     frame.style.opacity = '0';
+    if (desktop) $('reader').classList.toggle('turning', turning(settings, book));
     engineSource ??= await (await fetch('engine/PositionTracker.js')).text();
+    if (mine !== generation) return;
+    // The reader's own window, before the book is laid out in it.
+    if (desktop) await windowFor('reader');
     if (mine !== generation) return;
 
     await new Promise((done) => {
@@ -185,9 +235,17 @@ async function show(next) {
         page.webkit.messageHandlers[name] = { postMessage: (body) => receive(name, body) };
     }
     page.addEventListener('error', (event) => errors.push(String(event.message)));
-    page.addEventListener('pointerdown', () => { $('contents').hidden = true; });
+    // Over the page the drawer goes with a press on it; in its own window
+    // it stays.
+    page.addEventListener('pointerdown', () => { if (!aside?.on) drawer.close(); });
     page.addEventListener('mousemove', wake, { passive: true });
     page.addEventListener('keydown', keys);
+    if (desktop) {
+        noBrowser(page);
+        for (const kind of ['mousemove', 'keydown', 'wheel', 'pointerdown', 'touchmove']) page.addEventListener(kind, touch, { passive: true });
+        page.addEventListener('scroll', () => marks.stand(), { passive: true });
+        page.document.addEventListener('click', (event) => { if (marks.pressed(event)) { event.preventDefault(); event.stopPropagation(); } }, true);
+    }
     linksGoOutside(page.document);
 
     const notes = page.document.getElementById('_cr_footnotes');
@@ -200,9 +258,10 @@ async function show(next) {
     apply();
     // A PDF draws its pages as they come near the screen.
     book.attach?.(page);
-    const saved = JSON.parse(localStorage.getItem('nano.position.' + book.key) || 'null') || { xpath: '', scrollY: 0, progress: 0 };
-    page.PositionTracker.restorePosition(saved.xpath, 0, saved.scrollY, saved.progress);
-    place.progress = saved.progress;
+    const saved = JSON.parse(localStorage.getItem('nano.position.' + book.key) || 'null') || desk.books[book.key] || { xpath: '', scrollY: 0, progress: 0 };
+    page.PositionTracker.restorePosition(saved.xpath || '', 0, saved.scrollY || 0, saved.progress || 0);
+    Object.assign(place, { xpath: saved.xpath || '', scrollY: saved.scrollY || 0, progress: saved.progress || 0 });
+    beginReading({ key: book.key, title: book.title, author: book.author, pages: estimatedPages }, () => place);
     showPosition();
     // The reader's own grace: shown anyway if the page never answers.
     setTimeout(() => { if (!restored) receive('positionRestored', {}); }, 8000);
@@ -219,7 +278,9 @@ function closeBook() {
 }
 
 function close() {
-    $('contents').hidden = true;
+    endReading();
+    marks?.hide();
+    drawer.close();
     if ($('panel').open) $('panel').close();
     if (!book) return;
     book.release?.();
@@ -227,9 +288,14 @@ function close() {
     book = null;
     frame.srcdoc = '';
     $('reader').hidden = true;
-    $('home').hidden = false;
+    home.hidden = false;
     document.title = appName;
+    // The home's own window, unless another book comes at once.
+    if (desktop) setTimeout(() => { if (!book) windowFor('home'); }, 0);
     apply();
+    // The frame had the keys, and it is empty now: without this nothing
+    // heard them until a click.
+    if (desktop) { window.focus(); deskWindow.focus(); }
 }
 
 /// The paper goes with the text. The page lays its wash on a fixed layer —
@@ -316,26 +382,73 @@ function speak() {
         node.setAttribute('aria-label', words);
         node.title = node.dataset.key ? `${words} (${node.dataset.key})` : words;
     }
-    if (!$('home').hidden) offerShelf();
+    if (!home.hidden) offerShelf();
     offerInstall();
     // The family's form, told which reader and in which language (the site
     // has six of the eight; it keeps its own choice for the others).
-    $('feedback').href = `https://continuousreader.app/contact.html?app=webreader&lang=${language()}`;
+    $('feedback').href = `https://continuousreader.app/contact.html?app=${desktop ? 'nanoreader' : 'webreader'}&lang=${language()}`;
     if (!$('apps').hidden) renderApps($('apps'));
     if (!$('news').hidden) renderNews($('news'), settings.language);
+    deskWindow?.speak();
+    const menu = ['About NanoReader', 'Hide NanoReader', 'Hide Others', 'Show All', 'Quit NanoReader', 'Undo', 'Redo', 'Cut', 'Copy', 'Paste', 'Select All', 'Minimize', 'Close Window',
+        'File', 'Edit', 'View', 'Window', 'Help', 'Books', 'Closed books', 'Show or Hide the Sidebar', 'Notes', 'Journal', 'Statistics', 'Load a book…', 'Load from a link…', 'Close the book', 'Contents', 'Search', 'Marks', 'Mark the Selection', 'Reading settings', 'Full screen'];
+    setMenu({ ...Object.fromEntries(menu.map((words) => [words, t(words)])), Book: t('Book menu') });
     const choice = $('homeLanguage');
     choice.replaceChildren(new Option(t(desktop ? 'As the system' : 'As the browser'), 'auto'), ...Object.entries(languages).map(([code, name]) => new Option(name, code)));
     choice.value = settings.language || 'auto';
     $('formats').textContent = t(formats) + '.';
     $('bar').querySelector('.progress')?.setAttribute('aria-label', t('Position in the book'));
+    drawer.speak();
 }
-$('panel').addEventListener('close', () => { wake(); frame.contentWindow?.focus(); });
+$('panel').addEventListener('close', () => { $('settings').classList.remove('chosen'); wake(); frame.contentWindow?.focus(); });
+
+/// The colour the system may tint the window's title with: the page's while
+/// a book is open, the program's grey at home. A new element each time —
+/// WebKit did not follow a changed one (user, 26.11.2026: the title kept
+/// the palette before).
+let tinted = '';
+function tint(colour) {
+    if (colour === tinted) return;
+    tinted = colour;
+    const meta = Object.assign(document.createElement('meta'), { name: 'theme-color', content: colour });
+    const before = document.querySelector('meta[name="theme-color"]');
+    if (before) before.replaceWith(meta); else document.head.append(meta);
+}
 
 /// The shell's own colours follow the page's.
 function dress() {
     const colours = theme(settings, !!book?.pages);
     const root = document.documentElement.style;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', colours.bg);
+    // Twilight's greys a touch of the palette's hue (user, 26.11.2026: not
+    // a bare grey) — the whole window's, the title's too.
+    const greys = { '--c-window': '#48484d', '--c-side': '#414146', '--c-body': '#3b3b40', '--c-raised': '#4f4f55', '--c-key': '#58585e' };
+    const hue = palettes[settings.palette]?.link[4] || '#808080';
+    for (const [name, grey] of Object.entries(greys)) {
+        if (desktop && isDusk(settings)) root.setProperty(name, mix(grey, hue, 0.07));
+        else root.removeProperty(name);
+    }
+    // The title's colour: the page's paper while reading, the window's own
+    // at home.
+    const chrome = desktop && !book ? (isDusk(settings) ? mix(greys['--c-side'], hue, 0.07) : isDark(settings) ? '#232326' : '#ebebed') : colours.bg;
+    tint(chrome);
+    // On the desk the window is the program's, in its own greys (desk.css),
+    // and the colours are the page's alone.
+    if (desktop) {
+        const night = isDark(settings);
+        document.documentElement.toggleAttribute('data-dark', night);
+        document.documentElement.toggleAttribute('data-dusk', isDusk(settings));
+        root.setProperty('--paper', colours.bg);
+        root.setProperty('--ground', 'var(--c-body)');
+        root.setProperty('--ink', 'var(--c-text)');
+        root.setProperty('--surface', 'var(--c-window)');
+        root.setProperty('--raised', 'var(--c-raised)');
+        root.setProperty('--accent', colours.link);
+        root.setProperty('--accent-theme', accentOf(colours.link, night));
+        aside?.refresh();
+        root.colorScheme = night ? 'dark' : 'light';
+        dressWindow(settings.light === 'auto' && !book ? null : (book ? colours.dark : night) ? 'dark' : 'light', chrome);
+        return;
+    }
     root.setProperty('--ground', colours.bg);
     root.setProperty('--ink', colours.text);
     root.setProperty('--surface', colours.dark ? mix(colours.bg, '#ffffff', 0.07) : mix(colours.bg, '#ffffff', 0.6));
@@ -421,6 +534,8 @@ function holdTheLight(page) {
 function apply() {
     save(settings);
     dress();
+    // Turned pages stop above the strip; a scroll runs under it.
+    if (desktop) $('reader').classList.toggle('turning', turning(settings, book));
     panel.refresh();
     const page = frame.contentWindow;
     if (!book || !page || !page.PositionTracker) return;
@@ -459,6 +574,35 @@ function applySoon() {
     applyTimer = setTimeout(() => { appliedAt = performance.now(); apply(); }, wait);
 }
 
+/// The reader's accent on the desk, after the palette's link: its hue at a
+/// clear lightness and a moderate chroma, so that a dull ink (an olive, a
+/// brown) does not come out muddy; yellow-greens lean to green, which they
+/// read as. In OKLCH, back to sRGB within its gamut.
+function accentOf(hex, night) {
+    const lin = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+    const [r, g, b] = [1, 3, 5].map((i) => lin(parseInt(hex.slice(i, i + 2), 16) / 255));
+    const l_ = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+    const m_ = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+    const s_ = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+    const A = 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_;
+    const B = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_;
+    let hue = (Math.atan2(B, A) * 180) / Math.PI;
+    if (hue < 0) hue += 360;
+    if (hue > 85 && hue < 128) hue = 132;
+    const L = night ? 0.74 : 0.55;
+    const out = (C) => {
+        const a = C * Math.cos((hue * Math.PI) / 180), bb = C * Math.sin((hue * Math.PI) / 180);
+        const l = (L + 0.3963377774 * a + 0.2158037573 * bb) ** 3;
+        const m = (L - 0.1055613458 * a - 0.0638541728 * bb) ** 3;
+        const s = (L - 0.0894841775 * a - 1.2914855480 * bb) ** 3;
+        return [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s];
+    };
+    let C = Math.min(0.15, Math.max(0.1, Math.hypot(A, B)));
+    while (C > 0.02 && out(C).some((v) => v < 0 || v > 1)) C -= 0.005;
+    const gamma = (v) => Math.round(255 * Math.min(1, Math.max(0, v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055)));
+    return '#' + out(C).map((v) => gamma(v).toString(16).padStart(2, '0')).join('');
+}
+
 // MARK: - The strip: awake while the pointer moves, asleep while one reads
 
 let sleepTimer = 0;
@@ -468,7 +612,7 @@ function wake() {
     sleepTimer = setTimeout(sleep, 2500);
 }
 function sleep() {
-    if ($('strip').matches(':hover') || !$('contents').hidden || $('panel').open) { sleepTimer = setTimeout(sleep, 1000); return; }
+    if ($('strip').matches(':hover') || (drawer.isOpen && !aside?.on) || $('panel').open) { sleepTimer = setTimeout(sleep, 1000); return; }
     $('strip').classList.remove('awake');
 }
 $('strip').addEventListener('pointerenter', wake);
@@ -478,42 +622,186 @@ addEventListener('mousemove', wake, { passive: true });
 // MARK: - Full screen
 
 function toggleFullscreen() {
+    if (desktop) return toggleWindowFull().catch(() => {});
     if (document.fullscreenElement) document.exitFullscreen?.();
     else document.documentElement.requestFullscreen?.().catch(() => {});
 }
 document.addEventListener('fullscreenchange', wake);
+watchWindowFull(wake);
 
-/// The shell's keys, from the page or the shell: F for the full screen.
+/// The shell's keys, from the page or the shell: F for the full screen, the
+/// system's own for a search (⌘F, Ctrl+F).
 function keys(event) {
-    if (event.metaKey || event.ctrlKey || event.altKey || event.defaultPrevented) return;
+    if (event.defaultPrevented) return;
+    if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.code === 'KeyF' && book && !book.pages) {
+        event.preventDefault();
+        drawer.open('search');
+        return;
+    }
+    // The Mac's menu takes these itself; elsewhere the page in focus may
+    // hear them first.
+    if (desktop && event.ctrlKey && !event.metaKey && !event.altKey) {
+        const command = (event.shiftKey
+            ? { KeyO: 'link', KeyW: 'close', KeyC: 'contents', KeyB: 'marks', KeyN: 'notes', KeyJ: 'journal', KeyS: 'stats' }
+            : { KeyO: 'open', KeyB: 'bookmark', KeyY: 'books', Comma: 'settings' })[event.code];
+        if (command) { event.preventDefault(); return perform(command); }
+    }
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
     const tag = (event.target.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'textarea') return;
     if (event.code === 'KeyF' && book) { event.preventDefault(); toggleFullscreen(); }
-    if (event.key === 'Escape' && !$('contents').hidden) { $('contents').hidden = true; frame.contentWindow?.focus(); }
+    if (event.key === 'F11' && desktop) { event.preventDefault(); return toggleFullscreen(); }
+    // ⇧Esc: back to the books, the family's key (ReaderView, #803).
+    if (event.key === 'Escape' && event.shiftKey && book) { event.preventDefault(); closeBook(); return; }
+    if (event.key === 'Escape' && !$('markBar').hidden) { frame.contentWindow?.getSelection()?.removeAllRanges(); marks.hide(); return; }
+    if (event.key === 'Escape' && desktop && !drawer.isOpen && !$('panel').open && document.documentElement.classList.contains('full')) return toggleFullscreen();
+    // A picture alone over the drawer takes Escape first.
+    if (event.key === 'Escape' && drawer.isOpen && !$('picture').open) drawer.close();
 }
 addEventListener('keydown', keys);
 
-// MARK: - Contents
-
-/// The book's contents: a list that travels. The chapter the reader is in
-/// is marked — the last whose place is not past the page's.
-function showContents() {
-    const tracker = frame.contentWindow.PositionTracker;
-    const places = new Map(JSON.parse(tracker.getChapterPositions(book.chapters.map((chapter) => chapter.id))).map((p) => [p.id, p.progress]));
-    const here = (tracker.getPosition().progress || 0) + 0.0005;
-    let current = -1;
-    book.chapters.forEach((chapter, index) => { if (places.has(chapter.id) && places.get(chapter.id) <= here) current = index; });
-    $('contents').replaceChildren(...book.chapters.map((chapter, index) => {
-        const row = document.createElement('button');
-        row.type = 'button';
-        row.textContent = chapter.title;
-        row.classList.toggle('chosen', index === current);
-        row.addEventListener('click', () => { $('contents').hidden = true; tracker.scrollToElementId(chapter.id); frame.contentWindow.focus(); });
-        return row;
-    }));
-    $('contents').hidden = false;
-    $('contents').querySelector('.chosen')?.scrollIntoView({ block: 'center' });
+/// What a browser does and a program does not: the page's own menu (a
+/// field's and a selection's stay), a reload, a print, a zoom, a step back
+/// through pages.
+function noBrowser(target) {
+    target.addEventListener('contextmenu', (event) => {
+        const field = event.target.closest?.('input, textarea');
+        const words = !(event.view?.getSelection?.() || getSelection()).isCollapsed;
+        if (!field && !words) event.preventDefault();
+    });
+    target.addEventListener('keydown', (event) => {
+        const held = event.ctrlKey || event.metaKey;
+        if (['F3', 'F5', 'F7', 'BrowserBack', 'BrowserForward', 'BrowserRefresh'].includes(event.key)
+            || (held && ['KeyR', 'KeyP', 'KeyG', 'KeyU', 'Equal', 'Minus', 'Digit0', 'NumpadAdd', 'NumpadSubtract'].includes(event.code))
+            || (event.altKey && ['ArrowLeft', 'ArrowRight'].includes(event.key) && !held)) event.preventDefault();
+    }, true);
+    for (const kind of ['mousedown', 'mouseup', 'auxclick']) target.addEventListener(kind, (event) => { if (event.button > 2) event.preventDefault(); }, true);
+    target.addEventListener('wheel', (event) => { if (event.ctrlKey) event.preventDefault(); }, { passive: false });
+    target.addEventListener('dragstart', (event) => { if (event.target.closest?.('a, img')) event.preventDefault(); });
 }
+if (desktop) noBrowser(window);
+
+/// A command by its name: from the program's menu and the desk's keys.
+let performed = { command: '', at: 0 };
+function perform(command) {
+    if (document.querySelector('dialog[open]:not(#panel)')) return;
+    // Windows and Linux may hear a key twice: their menu and the page.
+    if (performed.command === command && performance.now() - performed.at < 250) return;
+    performed = { command, at: performance.now() };
+    const reading = !!book;
+    switch (command) {
+    case 'open': return chooseFile();
+    case 'link': return askLink();
+    case 'close': return reading && closeBook();
+    case 'contents': return reading && drawer.toggle('contents');
+    case 'search': return reading && !book.pages && drawer.open('search');
+    case 'marks': return reading && marks?.offered && drawer.toggle('marks');
+    // A selection marked; with none, nothing — a place marked unseen was
+    // a surprise (user, 26.11.2026).
+    case 'bookmark': return reading && marks?.add({ selected: true });
+    case 'settings': return reading ? openSettings() : (location.hash = 'prefs');
+    case 'fullscreen': return toggleFullscreen();
+    case 'sidebar': return deskWindow?.toggleSide();
+    case 'books': case 'history': case 'notes': case 'journal': case 'stats':
+        if (reading) closeBook();
+        location.hash = command;
+        return undefined;
+    }
+}
+onMenu(perform);
+
+// MARK: - The drawer: contents, search, marks, pictures
+
+/// WebKit and a book of turned pages, its words wrapped anew (a mark tinted,
+/// a search lit or put out): the layout stands, the place too, and the
+/// columns are not drawn again — a blank page, or part of one (user,
+/// 26.11.2026, NanoReader, three columns; the page's state was whole, and a
+/// jump to the same place drew it). The jump, after every such pass.
+/// After a jump from the drawer or the marks: the columns where they
+/// should stand, once the slide is over. A slide cut short (WebKit busy
+/// painting a long mark, the window's focus changing) left the spread
+/// between two pages, and the page script's snap waits for the turn's end
+/// that never comes (user, 26.11.2026: a column cut at the left).
+let landTimer = 0;
+function landed() {
+    clearTimeout(landTimer);
+    landTimer = setTimeout(() => {
+        frame.contentWindow?.PositionTracker?.verifyLayout?.();
+        redrawPage();
+    }, 900);
+}
+
+function redrawPage() {
+    const tracker = frame.contentWindow?.PositionTracker;
+    if (!book || book.pages || !restored || !tracker || !turning(settings, book)) return;
+    requestAnimationFrame(() => {
+        if (!book || !tracker.getPosition) return;
+        const at = tracker.getPosition();
+        tracker.scrollToXPath(at.xpath || '', at.progress || 0, true);
+    });
+}
+
+/// The marks are the program's: a browser may clear what it keeps, and
+/// what a reader wrote is not to be lost.
+const marks = desktop ? bookMarks({
+    settled: redrawPage,
+    landed,
+    book: () => book,
+    page: () => frame.contentWindow,
+    frame: () => frame,
+    tracker: () => frame.contentWindow?.PositionTracker,
+}) : null;
+
+const drawer = bookDrawer($('drawer'), {
+    settled: redrawPage,
+    landed,
+    columns: () => spreadColumns,
+    book: () => book,
+    page: () => frame.contentWindow,
+    tracker: () => frame.contentWindow?.PositionTracker,
+    turning: () => turning(settings, book),
+    pages: () => (turning(settings, book) && place.totalPages > 0 ? place.totalPages : estimatedPages),
+    accent: () => theme(settings, !!book?.pages).link,
+    marks,
+    /// In its own window the drawer stays after a choice, and the page
+    /// takes the keys.
+    get docked() { return !!aside?.on; },
+    left() { aside?.reading(); },
+    opened(tab) {
+        if (!desktop) return;
+        wake();
+        for (const [id, name] of [['contentsDoor', 'contents'], ['searchDoor', 'search'], ['marksDoor', 'marks']]) $(id).classList.toggle('chosen', name === tab);
+    },
+    closed() {
+        for (const id of ['contentsDoor', 'searchDoor', 'marksDoor']) $(id).classList.remove('chosen');
+        wake();
+        frame.contentWindow?.focus();
+    },
+});aside = floatingDrawer($('drawer'), {
+    page: () => frame.contentWindow,
+    close: () => drawer.close(),
+    title: () => book?.title || appName,
+});
+
+
+/// NanoReader's window when no book is open.
+let shownVersion = version;
+const deskWindow = desktop ? deskHome(home, {
+    settings, formats, slots, shelf, places, reopen, choose: chooseFile, askLink, openEntry,
+    forget: forgetBook,
+    /// To a place, not to reading (user, 26.11.2026: to load is not to read).
+    loadFile: (at) => chooseFile({ into: at }),
+    loadLink: (at) => askLink({ into: at }),
+    loadEntry,
+    progress: (key) => JSON.parse(localStorage.getItem('nano.position.' + key) || 'null')?.progress || desk.books[key]?.progress || 0,
+    version: () => shownVersion,
+    feedback: () => $('feedback').click(),
+    setLanguage(code) { settings.language = code; changeLanguage(); },
+    setLight(light) { settings.light = light; apply(); },
+}) : null;
+
+addEventListener('pointerdown', touch, { passive: true });
+addEventListener('keydown', touch, { passive: true });
 
 // MARK: - Doors
 
@@ -522,7 +810,7 @@ function showContents() {
 let openedFile = null;
 
 async function openFile(file, { keep: keeping = true } = {}) {
-    $('problem').textContent = '';
+    say('');
     const key = `${file.name}:${file.size}`;
     // A new book needs a free slot: with the three full, the reader
     // chooses which one goes, or keeps them all and opens nothing.
@@ -535,6 +823,7 @@ async function openFile(file, { keep: keeping = true } = {}) {
         });
         await show({ key, ...converted });
         openedFile = file;
+        if (desktop) noteOpened(key, book, file);
         // The cover, small, kept with the book for its card at home.
         const cover = await thumbnail(converted.cover);
         if (!keeping) {
@@ -552,14 +841,20 @@ async function openFile(file, { keep: keeping = true } = {}) {
     } catch (error) {
         busy(null);
         close();
-        $('problem').textContent = problem(error.message || String(error));
+        say(problem(error.message || String(error)));
     }
+}
+
+/// What went wrong, said where the reader is: at home. Empty takes it away.
+function say(words) {
+    $('problem').textContent = words;
+    deskWindow?.say(words);
 }
 
 /// A book from a link, pasted or dropped on the home: downloaded when the
 /// site lets the page have it, then opened as any file.
 async function openLink(url) {
-    $('problem').textContent = '';
+    say('');
     busy(t('Downloading…'));
     try {
         const file = await download(url, (received, total) => busy(total
@@ -568,7 +863,20 @@ async function openLink(url) {
         await openFile(file);
     } catch (error) {
         busy(null);
-        $('problem').textContent = problem(error.message || String(error));
+        say(problem(error.message || String(error)));
+    }
+}
+
+/// A link's book into a place on the desk, not opened.
+async function loadLink(url, at) {
+    say('');
+    busy(t('Downloading…'));
+    try {
+        const file = await download(url, (received, total) => busy(total ? `${t('Downloading…')} ${Math.round((received / total) * 100)}%` : t('Downloading…')));
+        await loadInto(file, at);
+    } catch (error) {
+        busy(null);
+        say(problem(error.message || String(error)));
     }
 }
 
@@ -576,7 +884,7 @@ async function openLink(url) {
 // door shows it (user, 13.11): few sites let a page have their files, so
 // a field offered for every link would fail more often than not.
 addEventListener('paste', (event) => {
-    if (book || $('home').hidden || /^(input|textarea)$/i.test(event.target.tagName || '')) return;
+    if (book || home.hidden || /^(input|textarea)$/i.test(event.target.tagName || '')) return;
     const url = linkIn(event.clipboardData?.getData('text'));
     if (!url) return;
     event.preventDefault();
@@ -660,7 +968,7 @@ async function readPDFAs(mode) {
     localStorage.setItem('nano.pdf.' + key, mode);
     localStorage.setItem('nano.position.' + key, JSON.stringify({ xpath: '', scrollY: 0, progress: place.progress || 0 }));
     await openFile(file, { keep: false });
-    if (again && book) { $('panel').showModal(); $('panel').focus(); }
+    if (again && book && !$('panel').open) openSettings();
 }
 
 /// A book the family's converter already made — the development samples.
@@ -683,6 +991,7 @@ async function reopen(record) {
 /// At home: the books kept, a card each in its slot, one press away.
 let coverURLs = [];
 async function offerShelf() {
+    if (desktop) return deskWindow?.draw();
     const books = await shelf();
     for (const url of coverURLs) URL.revokeObjectURL(url);
     coverURLs = [];
@@ -702,8 +1011,8 @@ function freeSlot() {
     const door = node.querySelector('.book');
     door.querySelector('.name').textContent = t('Free slot');
     door.querySelector('.how-far').remove();
-    door.setAttribute('aria-label', `${t('Free slot')}: ${t('Open a book…')}`);
-    door.addEventListener('click', () => $('file').click());
+    door.setAttribute('aria-label', `${t('Free slot')}: ${t('Load a book…')}`);
+    door.addEventListener('click', chooseFile);
     return node;
 }
 
@@ -745,13 +1054,15 @@ async function thumbnail(url) {
     if (!url) return null;
     try {
         const bitmap = await createImageBitmap(await (await fetch(url)).blob());
-        const height = 240, width = Math.max(1, Math.min(480, Math.round((bitmap.width * height) / bitmap.height)));
+        // Sharp on a card as tall as a window lets it be, twice over for
+        // the Mac's screens (user, 26.11.2026: 240 px came out blurred).
+        const height = Math.min(bitmap.height, 800), width = Math.max(1, Math.min(1200, Math.round((bitmap.width * height) / bitmap.height)));
         const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
         canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
         bitmap.close();
-        const small = await new Promise((done) => canvas.toBlob(done, 'image/jpeg', 0.85));
+        const small = await new Promise((done) => canvas.toBlob(done, 'image/jpeg', 0.88));
         return small ? { bytes: await small.arrayBuffer(), type: 'image/jpeg' } : null;
     } catch {
         return null;
@@ -761,9 +1072,51 @@ async function thumbnail(url) {
 /// A book let go, and all that was kept of it — the file, the place, the
 /// choices made for it; the books after it move up a slot.
 async function forgetBook(key) {
-    for (const kept of ['position', 'pdf', 'direction', 'strip']) localStorage.removeItem(`nano.${kept}.${key}`);
+    // On the desk the history keeps a book's place when its slot goes, and
+    // the slot keeps its number.
+    if (!desktop) for (const kept of ['position', 'pdf', 'direction', 'strip']) localStorage.removeItem(`nano.${kept}.${key}`);
     if (localStorage.getItem('nano.open') === key) localStorage.removeItem('nano.open');
-    await forget(key);
+    await forget(key, { hole: desktop });
+    if (desktop) noteClosed(key);
+}
+
+/// A book loaded into a place on the desk: read for its name and its
+/// cover, kept there, not opened. `at`: the place, else the first free.
+async function loadInto(file, at) {
+    say('');
+    busy(t('Loading…'));
+    try {
+        const key = `${file.name}:${file.size}`;
+        const bytes = await file.arrayBuffer();
+        const converted = await convert(bytes, file.name, { pdf: localStorage.getItem('nano.pdf.' + key) || undefined });
+        const cover = await thumbnail(converted.cover);
+        if (!(await keep({ key, name: file.name, title: converted.title, author: converted.author || '', cover, bytes }, { at }))) throw new Error(t('No place is free: remove one of the books first.'));
+        noteLoaded(key, converted, file);
+    } catch (error) {
+        say(problem(error.message || String(error)));
+    } finally {
+        busy(null);
+        deskWindow?.draw();
+    }
+}
+
+/// A closed book loaded into a place again: from its file, else its link.
+async function loadEntry(entry, at) {
+    const known = { ...desk.books[entry.key], ...entry };
+    try {
+        if (known.path) return await loadInto(await fileAt(known.path), at);
+    } catch {
+        if (!known.link) { say(t('The file is not there any more.')); return undefined; }
+    }
+    if (!known.link) { say(t('The file is not there any more.')); return undefined; }
+    busy(t('Downloading…'));
+    try {
+        return await loadInto(await download(known.link, (received, total) => busy(total ? `${t('Downloading…')} ${Math.round((received / total) * 100)}%` : t('Downloading…'))), at);
+    } catch (error) {
+        busy(null);
+        say(problem(error.message || String(error)));
+        return undefined;
+    }
 }
 
 /// Room for a book: it is kept already, or a slot is free, or the reader
@@ -807,7 +1160,9 @@ function askRoom(books, name) {
         footer.append(cancel);
         ask.replaceChildren(
             make('h2', {}, t('Three books are kept')),
-            make('p', {}, t('WebReader keeps three books. To open {name}, choose the one it replaces: that book’s file and place are removed.').replace('{name}', `«${name}»`)),
+            make('p', {}, t(desktop
+                ? 'NanoReader keeps three books at hand. To open {name}, choose the one it replaces: that book stays in the history, with its place and its notes.'
+                : 'WebReader keeps three books. To open {name}, choose the one it replaces: that book’s file and place are removed.').replace('{name}', `«${name}»`)),
             rows,
             footer,
         );
@@ -818,26 +1173,99 @@ function askRoom(books, name) {
     });
 }
 
-$('open').addEventListener('click', () => $('file').click());
+/// A file to open: the system's dialog on the desk (it gives the path the
+/// history needs), the browser's own otherwise.
+async function chooseFile({ into } = {}) {
+    if (!desktop) return $('file').click();
+    try {
+        const file = await pickFile(t('Load a book…'), t('Books'));
+        if (file && into !== undefined) await loadInto(file, into);
+        else if (file) await openFile(file);
+    } catch (error) {
+        say(problem(error.message || String(error)));
+    }
+}
+
+/// A link to open, asked for in a window of its own.
+function askLink({ into } = {}) {
+    const ask = $('linkAsk');
+    const field = make('input', { type: 'url', placeholder: 'https://', autocomplete: 'off', spellcheck: false });
+    field.setAttribute('aria-label', t('Link'));
+    const go = make('button', { type: 'submit', class: 'prominent', text: t('Load') });
+    const cancel = make('button', { type: 'button', class: 'quiet', text: t('Cancel') });
+    cancel.addEventListener('click', () => ask.close());
+    const form = make('form', {}, field, make('footer', {}, cancel, go));
+    const look = () => { go.disabled = !linkIn(field.value); };
+    field.addEventListener('input', look);
+    look();
+    form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const url = linkIn(field.value);
+        if (!url) return;
+        ask.close();
+        if (into !== undefined) return loadLink(url.href, into);
+        if (book) closeBook();
+        openLink(url.href);
+        return undefined;
+    });
+    ask.replaceChildren(make('h2', { text: t('Load from a link…').replace('…', '') }), form);
+    ask.setAttribute('aria-label', t('Load from a link…'));
+    ask.showModal();
+    field.focus();
+}
+
+/// A book of the history, the notes or the journal: from its slot, its
+/// file or its link; at a mark where one is asked for.
+async function openEntry({ key }, mark) {
+    const known = { ...desk.books[key], ...desk.history.find((entry) => entry.key === key) };
+    say('');
+    const kept = (await shelf()).find((record) => record.key === key);
+    try {
+        if (mark) afterNext = mark;
+        if (kept) await reopen(kept);
+        else if (known.path) await openFile(await fileAt(known.path));
+        else if (known.link) await openLink(known.link);
+        else throw new Error('The file is not there any more.');
+    } catch (error) {
+        // Moved or taken away since: the link, where there is one.
+        if (known.link && known.path && !book) return openLink(known.link);
+        location.hash = '';
+        say(t('The file is not there any more.'));
+    } finally {
+        if (!book) afterNext = null;
+    }
+}
+
+/// Where the book being opened is to go once it stands.
+let afterNext = null;
+function takeAfterOpening() {
+    const mark = afterNext;
+    afterNext = null;
+    if (mark) setTimeout(() => marks?.go(mark), 60);
+}
+
+$('open').addEventListener('click', chooseFile);
 $('file').addEventListener('change', (event) => {
     const file = event.target.files[0];
     event.target.value = '';
     if (file) openFile(file);
 });
 $('close').addEventListener('click', closeBook);
-$('settings').addEventListener('click', () => {
-    $('contents').hidden = true;
+$('settings').addEventListener('click', openSettings);
+function openSettings() {
+    drawer.close();
     $('panel').showModal();
     // The window itself takes the focus, not its first key: a ring round
     // the close button on a touch said nothing.
     $('panel').focus();
-});
-$('contentsDoor').addEventListener('click', () => { if ($('contents').hidden) showContents(); else $('contents').hidden = true; });
+}
+/// The same door again shuts the drawer.
+$('contentsDoor').addEventListener('click', () => drawer.toggle('contents'));
+$('searchDoor').addEventListener('click', () => drawer.toggle('search'));
+$('marksDoor').addEventListener('click', () => drawer.toggle('marks'));
 $('fullscreen').addEventListener('click', toggleFullscreen);
 // The iPhone's browser has no full screen for a page.
-$('fullscreen').hidden = !document.fullscreenEnabled;
-
-const home = $('home');
+$('fullscreen').hidden = !desktop && !document.fullscreenEnabled;
 
 $('homeLanguage').addEventListener('change', (event) => {
     settings.language = event.target.value;
@@ -854,6 +1282,7 @@ $('homeLight').addEventListener('click', (event) => {
 
 /// The home and the apps' page share the leaf; the address says which.
 function route() {
+    if (desktop) return deskWindow?.show(location.hash.slice(1));
     const page = { '#apps': 'apps', '#news': 'news' }[location.hash] || 'front';
     if (page === 'apps') renderApps($('apps'));
     if (page === 'news') {
@@ -879,6 +1308,8 @@ addEventListener('drop', (event) => {
     const url = linkIn(event.dataTransfer.getData('text/uri-list') || event.dataTransfer.getData('text/plain'));
     if (url) openLink(url.href);
 });
+
+watchDrag((over) => home.classList.toggle('over', over));
 
 onSystemLight(apply);
 
@@ -1009,16 +1440,9 @@ async function takeShared() {
     }
 }
 
-// On the desk the reader is NanoReader, and no browser is around it.
-if (desktop) {
-    document.title = appName;
-    document.querySelector('#front .eyebrow').dataset.i18n = 'A small book reader';
-    const name = document.querySelector('#front h1');
-    name.setAttribute('aria-label', appName);
-    name.querySelector('.dropcap').textContent = 'N';
-    name.querySelector('.dropcap').nextSibling.textContent = 'ano';
-}
+if (desktop) document.title = appName;
 $('version').querySelector('.number').textContent = version;
+programVersion().then((own) => { if (own) { shownVersion = `${own} beta (${version})`; deskWindow?.draw(); } });
 $('file').setAttribute('accept', accept);
 speak();
 apply();
@@ -1031,8 +1455,10 @@ if ('launchQueue' in window) {
 
 // A book shared to the reader or handed to the program opens; else a book
 // open when the page went away opens again; else home offers it.
-takeShared()
-    .then((took) => took || booksFromSystem(openFile, (words) => { $('problem').textContent = problem(words); }))
+openDesk()
+    .then(() => deskWindow?.show(location.hash.slice(1)))
+    .then(takeShared)
+    .then((took) => took || booksFromSystem(openFile, (words) => say(problem(words))))
     .then((took) => (took ? null : shelf())).then((books) => {
     if (book || !books) return;
     const open = books.find((record) => record.key === localStorage.getItem('nano.open'));
@@ -1042,7 +1468,7 @@ takeShared()
 
 // For the tests and the console.
 window.nano = {
-    settings, messages, errors, apply, openSample, openFile, openLink, show, close,
+    settings, messages, errors, apply, openSample, openFile, openLink, show, close, desk, clock, perform,
     /// The first slot freed when the three are full: tests that open more
     /// than three books in a row.
     async freeSlot() { const books = await shelf(); if (books.length >= 3) await forgetBook(books[0].key); },

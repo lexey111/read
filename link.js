@@ -7,6 +7,8 @@
 // book and open the file. There is no server in between: the link goes
 // from this page to the site and nowhere else.
 
+import { desktop, fetched } from './desktop.js';
+
 const LIMIT = 200 * 1024 * 1024;
 const bookName = /\.(epub|fb2|pdf|cbz|zip|mobi|azw3?|prc|md|markdown|txt|x?html?)$/i;
 
@@ -27,6 +29,8 @@ export function linkIn(text) {
 /// does not say.
 export async function download(url, progress = () => {}) {
     const address = new URL(url);
+    // On the desk the program asks, and any site answers it.
+    if (desktop) return fromProgram(address);
     // A secure page cannot read an http:// link: its https:// is asked.
     if (address.protocol === 'http:' && location.protocol === 'https:') address.protocol = 'https:';
     let answer;
@@ -37,7 +41,7 @@ export async function download(url, progress = () => {}) {
     }
     if (!answer.ok) throw new Error(`The link answered with an error (${answer.status}).`);
     const type = (answer.headers.get('Content-Type') || '').toLowerCase();
-    const name = nameOf(answer, address);
+    const name = nameOf(answer.headers.get('Content-Disposition'), answer.url || address.href);
     if (type.startsWith('text/html') && !bookName.test(name)) throw new Error('This link leads to a web page, not a book.');
     const total = Number(answer.headers.get('Content-Length')) || 0;
     if (total > LIMIT) throw new Error('The file is too large to download here.');
@@ -59,16 +63,29 @@ export async function download(url, progress = () => {}) {
     return new File(parts, name, { type });
 }
 
+async function fromProgram(address) {
+    let answer;
+    try {
+        answer = await fetched(address.href);
+    } catch (error) {
+        throw new Error(error.message || String(error));
+    }
+    const type = (answer.about.type || '').toLowerCase();
+    const name = nameOf(answer.about.disposition, answer.about.url || address.href);
+    if (type.startsWith('text/html') && !bookName.test(name)) throw new Error('This link leads to a web page, not a book.');
+    return Object.assign(new File([answer.bytes], name, { type }), { link: address.href });
+}
+
 /// The site's name for the file (`Content-Disposition`, when it lets the
 /// page see it), else the address's last part — after the redirects.
-function nameOf(answer, address) {
-    const disposition = answer.headers.get('Content-Disposition') || '';
+function nameOf(said, address) {
+    const disposition = said || '';
     const encoded = /filename\*\s*=\s*[\w-]+''([^;]+)/i.exec(disposition);
     const plain = /filename\s*=\s*"?([^";]+)"?/i.exec(disposition);
     let name = '';
     try {
         name = encoded ? decodeURIComponent(encoded[1]) : plain ? plain[1] : '';
-        if (!name) name = decodeURIComponent(new URL(answer.url || address.href).pathname.split('/').filter(Boolean).pop() || '');
+        if (!name) name = decodeURIComponent(new URL(address).pathname.split('/').filter(Boolean).pop() || '');
     } catch {
         name = '';
     }

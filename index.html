@@ -10,6 +10,9 @@
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="stylesheet" href="shell.css">
+<link rel="stylesheet" href="desk.css">
+<link rel="stylesheet" href="desk-family.css">
+<script>if (window.__TAURI__) document.documentElement.classList.add('desk');</script>
 </head>
 <body>
 <div id="home">
@@ -27,7 +30,7 @@
             <p class="eyebrow" data-i18n="A book reader in the browser">A book reader in the browser</p>
             <h1 aria-label="WebReader"><span class="dropcap">W</span>eb<br><em>Reader<span class="punct">.</span></em></h1>
             <div class="doors">
-                <button id="open" type="button" class="prominent" data-i18n="Open a book…">Open a book…</button>
+                <button id="open" type="button" class="prominent" data-i18n="Load a book…">Load a book…</button>
                 <span class="hint" data-i18n="or drop it on the page">or drop it on the page</span>
             </div>
             <p class="notes"><span id="formats"></span><br><span data-i18n="Your books stay on your device.">Your books stay on your device.</span><span id="install" hidden><br><span class="how"></span><button type="button" class="hide" data-i18n-label="Hide">×</button></span></p>
@@ -68,6 +71,8 @@
     <img class="seal" src="icons/seal.svg" alt="" aria-hidden="true">
 </div>
 
+<div id="deskHome"></div>
+
 <section id="reader" hidden>
     <iframe id="page" title="Book"></iframe>
     <footer id="strip">
@@ -77,7 +82,9 @@
         </div>
         <div class="group">
             <button id="contentsDoor" type="button" class="icon" data-i18n-label="Contents" title="Contents" aria-label="Contents"><svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h9"/></svg></button>
-            <button id="settings" type="button" class="icon text" data-i18n-label="Reading settings" title="Reading settings" aria-label="Reading settings">Aa</button>
+            <button id="searchDoor" type="button" class="icon" data-i18n-label="Search" data-key="⌘F" title="Search" aria-label="Search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M15.5 15.5L20 20"/></svg></button>
+            <button id="marksDoor" type="button" class="icon" data-i18n-label="Marks" title="Marks" aria-label="Marks" hidden><svg viewBox="0 0 24 24"><path d="M7 4h10v16l-5-4-5 4z"/></svg></button>
+            <button id="settings" type="button" class="icon" data-i18n-label="Reading settings" title="Reading settings" aria-label="Reading settings"><svg viewBox="0 0 24 24"><path d="M4 7h8.5M17.5 7H20M4 12h2.5M11.5 12H20M4 17h10.5M19.5 17h.5"/><circle cx="15" cy="7" r="2.5"/><circle cx="9" cy="12" r="2.5"/><circle cx="17" cy="17" r="2.5"/></svg></button>
             <div id="bar"></div>
             <span id="position"></span>
         </div>
@@ -85,12 +92,38 @@
             <button id="fullscreen" type="button" class="icon" data-i18n-label="Full screen" data-key="F" title="Full screen (F)" aria-label="Full screen"><svg viewBox="0 0 24 24"><path class="enter" d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/><path class="leave" d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"/></svg></button>
         </div>
     </footer>
-    <nav id="contents" hidden></nav>
+    <aside id="drawer" hidden>
+        <div class="tabs" role="tablist">
+            <button type="button" role="tab" data-tab="contents" data-word="Contents">Contents</button>
+            <button type="button" role="tab" data-tab="search" data-word="Search">Search</button>
+            <button type="button" role="tab" data-tab="marks" data-word="Marks">Marks</button>
+            <button type="button" role="tab" data-tab="notes" data-word="Comment">Comment</button>
+            <button type="button" role="tab" data-tab="pictures" data-word="Pictures">Pictures</button>
+        </div>
+        <nav id="contents" class="list" data-section="contents"></nav>
+        <section class="search" data-section="search" hidden>
+            <div class="field">
+                <input type="search" autocomplete="off" spellcheck="false">
+                <button type="button" class="icon" data-step="-1" data-i18n-label="Previous" disabled><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></button>
+                <button type="button" class="icon" data-step="1" data-i18n-label="Next" disabled><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+            </div>
+            <output></output>
+            <div class="list"></div>
+        </section>
+        <section class="marks" data-section="marks" hidden></section>
+        <section class="notes" data-section="notes" hidden></section>
+        <section class="pictures" data-section="pictures" hidden></section>
+        <form class="go"><label><span data-i18n="Go to">Go to</span><input type="text" inputmode="decimal" autocomplete="off"></label></form>
+    </aside>
+    <dialog id="picture" tabindex="-1"><img alt=""></dialog>
+    <div id="markBar" role="toolbar" hidden></div>
+    <dialog id="markEdit" class="ask" tabindex="-1"></dialog>
 </section>
 
 <dialog id="panel" tabindex="-1" aria-label="Reading settings"></dialog>
 <dialog id="pdfAsk" tabindex="-1"></dialog>
 <dialog id="shelfAsk" class="ask" tabindex="-1"></dialog>
+<dialog id="linkAsk" class="ask" tabindex="-1"></dialog>
 <div id="busy" role="status" aria-live="polite" hidden><span class="ring" aria-hidden="true"></span><span class="words"></span></div>
 <script type="module" src="shell.js"></script>
 </body>

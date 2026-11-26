@@ -1,0 +1,130 @@
+/* «Other readers»: the family's window (desk-family.js). The map with the
+   chosen place's card on one island, the doors every app of the family has
+   on another, the papers at the foot. The desk's colours only, so night is
+   the desk's; the pictures keep their paper. */
+
+.desk #deskHome .family { box-sizing: border-box; min-height: 100%; padding: 22px 24px 26px; }
+.desk #deskHome .family .sheet { container-type: inline-size; max-width: 880px; margin: 0 auto; display: grid; gap: 14px; }
+.desk #deskHome .family .island { border-radius: 12px; background: var(--c-window); box-shadow: inset 0 0 0 1px var(--c-line); }
+.desk #deskHome .family section.island { padding: 14px 20px 20px; }
+/* The island on the pictures' paper, the ink warm on it; a dimmed paper at
+   night, as the pictures are. */
+.desk #deskHome .family section.island.tinted {
+    background: var(--paper); transition: background-color 0.25s;
+    --c-text: #2b2219; --c-soft: #6e604f; --c-line: rgba(70, 45, 20, 0.16); --c-hover: rgba(70, 45, 20, 0.06); --c-chosen: rgba(70, 45, 20, 0.1);
+    --c-key: #fffaf1; --c-window: var(--paper); --c-raised: #fffaf1; --accent-sys: #2f6fdb;
+    color: var(--c-text); box-shadow: inset 0 0 0 1px rgba(70, 45, 20, 0.12);
+}
+.desk[data-dark] #deskHome .family section.island.tinted { background: color-mix(in srgb, var(--paper) 80%, #000); --c-window: color-mix(in srgb, var(--paper) 80%, #000); --c-key: color-mix(in srgb, var(--paper) 90%, #fff); --c-raised: color-mix(in srgb, var(--paper) 90%, #fff); }
+.desk #deskHome .family section.island.tinted .picture { box-shadow: none; }
+.desk #deskHome .family a { color: var(--accent-sys); text-decoration: none; }
+.desk #deskHome .family a:hover { text-decoration: underline; text-underline-offset: 2px; }
+.desk #deskHome .family svg.glyph, .desk #deskHome .family svg.out, .desk #deskHome .family svg.tail { flex: none; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
+.desk #deskHome .family svg.out { width: 11px; height: 11px; stroke-width: 2.2; margin-left: 3px; opacity: 0.75; }
+
+/* MARK: The family's head */
+
+.desk #deskHome .family .head { display: flex; align-items: baseline; gap: 12px; }
+.desk #deskHome .family .head h2 { margin: 0 auto 0 0; font: 600 11px/1.3 var(--ui); letter-spacing: 0.04em; text-transform: uppercase; color: var(--c-soft); }
+.desk #deskHome .family .head a { display: inline-flex; align-items: center; font-size: 12px; white-space: nowrap; }
+.desk #deskHome .family .lead { margin: 6px 0 0; color: var(--c-soft); line-height: 1.5; }
+
+/* MARK: The map: smooth lines, a dot a place */
+
+.desk #deskHome .family .map { position: relative; height: 190px; margin: 8px 0 6px; }
+.desk #deskHome .family .map.compact { height: 200px; }
+.desk #deskHome .family .lines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.desk #deskHome .family .divide { stroke: color-mix(in srgb, var(--c-text) 22%, transparent); stroke-width: 1.5; stroke-linecap: round; stroke-dasharray: 2 7; }
+.desk #deskHome .family .way { fill: none; stroke: var(--accent-sys); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.desk #deskHome .family .place {
+    position: absolute; width: 46px; height: 46px; margin: -23px 0 0 -23px; padding: 0; border: 0; border-radius: 50%;
+    display: grid; place-items: center; background: none; color: var(--accent-sys); cursor: default; transition: none;
+}
+.desk #deskHome .family .place:hover { background: none; }
+/* The pointer's room round a dot. */
+.desk #deskHome .family .place::after { content: ''; position: absolute; inset: -14px; border-radius: 50%; }
+.desk #deskHome .family .place:focus-visible { outline: 2px solid var(--accent-sys); outline-offset: 2px; }
+.desk #deskHome .family .place > i { grid-area: 1 / 1; border-radius: 50%; pointer-events: none; }
+.desk #deskHome .family .halo { width: 42px; height: 42px; background: color-mix(in srgb, var(--accent-sys) 14%, transparent); opacity: 0; }
+.desk #deskHome .family .orbit { width: 30px; height: 30px; box-sizing: border-box; border: 2px solid currentColor; opacity: 0; transform: scale(0.6); transition: opacity 0.18s ease-out, transform 0.18s ease-out; }
+.desk #deskHome .family .spot { width: 14px; height: 14px; background: currentColor; }
+.desk #deskHome .family .trio { position: relative; width: 16px; height: 16px; }
+.desk #deskHome .family .trio b { position: absolute; width: 8px; height: 8px; border-radius: 50%; background: currentColor; left: calc(50% - 4px + var(--x)); top: calc(50% - 4px + var(--y)); }
+/* The app the reader is in a bull's eye, the place chosen ringed, the one
+   under the pointer a fainter ring. */
+.desk #deskHome .family .place.here .halo { opacity: 1; }
+.desk #deskHome .family .place.here .orbit { opacity: 1; transform: none; }
+.desk #deskHome .family .place.chosen:not(.here) .orbit { opacity: 0.55; transform: none; }
+.desk #deskHome .family .place.hover:not(.here):not(.chosen) .orbit { opacity: 0.35; transform: none; border-width: 1.5px; }
+.desk #deskHome .family .called { position: absolute; left: 50%; bottom: calc(100% + 1px); transform: translateX(-50%); white-space: nowrap; font: 400 14px/1.2 var(--ui); color: var(--c-text); pointer-events: none; }
+.desk #deskHome .family .place.here .called, .desk #deskHome .family .place.chosen .called { font-weight: 600; }
+.desk #deskHome .family .cap { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; font: 400 11.5px/1 var(--ui); color: var(--c-soft); pointer-events: none; }
+.desk #deskHome .family .cap.beside { transform: translateY(-50%); }
+
+/* MARK: The chosen place's card: every card in one cell, the others hidden */
+
+.desk #deskHome .family .deck { display: grid; margin-top: 14px; }
+.desk #deskHome .family .card {
+    grid-area: 1 / 1; min-width: 0; display: grid; grid-template-columns: 172px minmax(0, 1fr); grid-template-rows: auto 1fr;
+    grid-template-areas: "picture head" "picture say"; gap: 12px 24px; align-items: start; align-content: start;
+    opacity: 0; visibility: hidden; transition: opacity 0.18s ease-out, visibility 0.18s;
+}
+.desk #deskHome .family .card.shown { opacity: 1; visibility: visible; }
+.desk #deskHome .family .picture {
+    grid-area: picture; margin: 0; width: 172px; aspect-ratio: 1; border-radius: 12px; overflow: hidden; position: relative;
+    display: grid; place-items: center; background: var(--paper); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+.desk #deskHome .family .picture.room img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.desk #deskHome .family .picture.emblem img { width: 44%; aspect-ratio: 1; border-radius: 23%; box-shadow: 0 8px 22px rgba(31, 58, 82, 0.28), 0 1px 3px rgba(31, 58, 82, 0.2); }
+.desk[data-dark] #deskHome .family .picture { filter: brightness(0.8); }
+.desk #deskHome .family .card header { grid-area: head; display: flex; align-items: center; gap: 12px; min-width: 0; }
+.desk #deskHome .family .card header img { flex: none; width: 38px; height: 38px; border-radius: 9px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12); }
+.desk #deskHome .family .card header div { min-width: 0; }
+.desk #deskHome .family .card h3 { margin: 0; font: 600 19px/1.2 var(--ui); }
+.desk #deskHome .family .card header p { margin: 3px 0 0; font-size: 12.5px; }
+.desk #deskHome .family .say { grid-area: say; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.desk #deskHome .family .say p { margin: 0; }
+.desk #deskHome .family .pitch { font-size: 13.5px; line-height: 1.55; max-width: 62ch; }
+.desk #deskHome .family .small { font-size: 12.5px; line-height: 1.5; color: var(--c-soft); max-width: 66ch; }
+.desk #deskHome .family .doors { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px !important; }
+.desk #deskHome .family .doors a { display: inline-flex; align-items: center; box-sizing: border-box; text-decoration: none; }
+.desk #deskHome .family .doors a, .desk #deskHome .family .doors a:hover { color: var(--c-text); text-decoration: none; }
+.desk #deskHome .family .doors a.prominent, .desk #deskHome .family .doors a.prominent:hover { color: var(--on-accent); }
+.desk #deskHome .family .doors svg.out { opacity: 0.8; }
+.desk #deskHome .family .present { display: flex; align-items: center; gap: 9px; margin-top: 4px !important; font-weight: 600; color: var(--accent-sys); }
+.desk #deskHome .family .present i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-sys) 18%, transparent); }
+
+/* A narrow page: the name over the picture, the picture a band. */
+@container (max-width: 560px) {
+    /* Clear of the map's lowest caption, under the program's dot here. */
+    .desk #deskHome .family .deck { margin-top: 24px; }
+    .desk #deskHome .family .card { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "head" "picture" "say"; gap: 12px; }
+    .desk #deskHome .family .picture { width: 100%; height: 190px; aspect-ratio: auto; }
+    .desk #deskHome .family .picture.room img { inset: 0 auto; left: 50%; width: 190px; transform: translateX(-50%); }
+    .desk #deskHome .family .picture.emblem img { width: 84px; }
+}
+
+/* MARK: The doors every app has, a whole row each */
+
+.desk #deskHome .family .rows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px; padding: 4px 20px; }
+.desk #deskHome .family .row {
+    position: relative; display: flex; align-items: center; gap: 11px; min-width: 0; height: 38px; margin: 0 -8px; padding: 0 8px;
+    border: 0; border-radius: 6px; background: none; color: var(--c-text); font: 400 13px/1 var(--ui); text-align: left; text-decoration: none; cursor: default; transition: none;
+}
+.desk #deskHome .family .row:hover { background: var(--c-hover); text-decoration: none; }
+.desk #deskHome .family .row:focus-visible { outline: 2px solid var(--accent-sys); outline-offset: -2px; }
+.desk #deskHome .family .row:nth-child(n + 3)::before { content: ''; position: absolute; left: 8px; right: 8px; top: 0; border-top: 1px solid var(--c-line); }
+.desk #deskHome .family .row .glyph { width: 18px; height: 18px; stroke-width: 1.6; color: var(--accent-sys); }
+.desk #deskHome .family .row span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.desk #deskHome .family .row .tail { width: 13px; height: 13px; stroke-width: 2; color: var(--c-soft); }
+@container (max-width: 520px) {
+    .desk #deskHome .family .rows { grid-template-columns: minmax(0, 1fr); }
+    .desk #deskHome .family .row:nth-child(n + 2)::before { content: ''; position: absolute; left: 8px; right: 8px; top: 0; border-top: 1px solid var(--c-line); }
+}
+
+/* MARK: The papers */
+
+.desk #deskHome .family .foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; padding: 2px 4px 0; font-size: 12.5px; }
+.desk #deskHome .family .foot .soft { margin-right: auto; font-variant-numeric: tabular-nums; }
+.desk #deskHome .family .foot a { display: inline-flex; align-items: center; gap: 5px; }
+.desk #deskHome .family .foot .glyph { width: 15px; height: 15px; stroke-width: 1.6; }

@@ -62,6 +62,7 @@ export function page(body, title, language, extraCSS = '') {
         .stanza { margin-bottom: 1em; }
         code { font-family: monospace; background: #f4f4f4; padding: 0.1em 0.3em; }
         .book-image { text-align: center; margin: 1em 0; }
+        ._nano_stars { text-align: center !important; text-indent: 0 !important; margin-left: 0 !important; margin-right: 0 !important; }
         img { max-width: 100%; height: auto; }
         .footnote-ref { color: inherit; text-decoration: none; border-bottom: 1px dotted currentColor; cursor: pointer; }
         a._cr_jump { cursor: pointer; }

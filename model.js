@@ -72,7 +72,7 @@ export const ranges = {
 
 export const defaults = {
     version: 2,
-    light: 'auto', palette: 'ochre', dayTone: 1, nightTone: 5, nightText: 100, nightPages: 100,
+    light: 'auto', palette: 'ochre', dayTone: 1, duskTone: 1, nightTone: 5, nightText: 100, nightPages: 100,
     paper: 'none', paperStrength: 50,
     face: 'serif', size: 18, leading: 0, align: 'justify',
     layout: 'scroll', columns: '2', turn: 'on', margins: 5, frame: 'shadow', border: 'vine',
@@ -84,6 +84,7 @@ export function load() {
     const stored = JSON.parse(localStorage.getItem('nano.settings') || '{}');
     const settings = Object.assign({}, defaults, stored);
     if (!palettes[settings.palette]) settings.palette = defaults.palette;
+    if (!['auto', 'day', 'dusk', 'night'].includes(settings.light)) settings.light = defaults.light;
     if (typeof settings.leading === 'string') settings.leading = { tight: -0.15, normal: 0, loose: 0.2 }[settings.leading] ?? 0;
     if (typeof settings.margins === 'string') settings.margins = { narrow: 2, normal: 5, wide: 10, widest: 16 }[settings.margins] ?? 5;
     if (settings.layout === 'page') Object.assign(settings, { layout: 'pages', columns: '1' });
@@ -108,7 +109,24 @@ const systemDark = matchMedia('(prefers-color-scheme: dark)');
 export const onSystemLight = (handler) => systemDark.addEventListener('change', handler);
 
 export const isNight = (s) => s.light === 'night' || (s.light === 'auto' && systemDark.matches);
-export const tone = (s) => (isNight(s) ? s.nightTone : s.dayTone);
+/// Twilight (user, 26.11.2026): between the day and the night, nearer the
+/// night — the palette's greys, from a grey to a dark one.
+export const isDusk = (s) => s.light === 'dusk';
+/// A dark window round the page: the night's or the twilight's.
+export const isDark = (s) => isNight(s) || isDusk(s);
+/// Which light's settings stand: 'day', 'dusk' or 'night'.
+export const lightOf = (s) => (isDusk(s) ? 'dusk' : isNight(s) ? 'night' : 'day');
+export const tone = (s) => (isDusk(s) ? 4 : isNight(s) ? s.nightTone : s.dayTone);
+
+/// The twilight's page at a step (0 a grey, 1 the palette's dusk, 2 nearer
+/// its deep): the paper of the palette's hue, the text light enough to read
+/// on the lightest.
+export function duskColours(palette, step) {
+    const grey = mix(palette.bg[4], '#808080', 0.5);
+    const bg = step <= 1 ? mix(grey, palette.bg[4], step) : mix(palette.bg[4], palette.bg[5], 0.6);
+    const text = mix(palette.text[4], '#ffffff', [0.5, 0.3, 0.2][Math.round(step)] ?? 0.3);
+    return { bg, text, link: palette.link[4], dark: true };
+}
 export const paged = (s) => s.layout !== 'scroll';
 
 /// Two colours mixed, `share` of the second.
@@ -122,6 +140,7 @@ export function mix(a, b, share) {
 /// paper (the reader's text brightness).
 export function theme(s, pictures = false) {
     const palette = palettes[s.palette];
+    if (isDusk(s)) return duskColours(palette, Math.max(0, Math.min(2, Number(s.duskTone ?? 1))));
     const index = tone(s);
     const dark = index >= firstDarkTone;
     const text = dark && !pictures && s.nightText < 100 ? mix(palette.text[index], palette.bg[index], 1 - s.nightText / 100) : palette.text[index];
@@ -147,6 +166,8 @@ function base(s, book, colours) {
         frameRail: 0, bookAuthor: book ? book.author || '' : '',
         isFullscreen: false, bottomSafeArea: 0, isPhone: false, fullscreenClockMode: 'no',
         scrollTopPad: 0, onSheet: false, comfortStrip: 0,
+        // Three and four columns: the margin between them, not twice it.
+        columnsGapIsPad: true,
     };
 }
 
