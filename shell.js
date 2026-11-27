@@ -833,7 +833,14 @@ async function openFile(file, { keep: keeping = true } = {}) {
         } else {
             // The bytes, not the File: Safari's private windows keep no
             // Blob in IndexedDB, and an ArrayBuffer is kept everywhere.
-            await keep({ key, name: file.name, title: converted.title, author: converted.author || '', cover, bytes: await file.arrayBuffer() });
+            try {
+                await keep({ key, name: file.name, title: converted.title, author: converted.author || '', cover, bytes: await file.arrayBuffer() });
+            } catch (error) {
+                if (!error.unkept) throw error;
+                // Open, but not kept: said over the page, where the reader is.
+                notice(t('The browser ran out of room: the book is open, but it will be gone after a reload.'));
+                return;
+            }
             // Asked once a book is read: the browser keeps the place and
             // the book through its own clean-ups.
             navigator.storage?.persist?.().catch(() => {});
@@ -844,6 +851,18 @@ async function openFile(file, { keep: keeping = true } = {}) {
         say(problem(error.message || String(error)));
     }
 }
+
+/// A word over whatever is on screen, the page included, for a while; a
+/// click takes it away.
+let noticeTimer = 0;
+function notice(words) {
+    const box = $('notice');
+    box.textContent = words;
+    box.hidden = false;
+    clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(() => { box.hidden = true; }, 9000);
+}
+$('notice').addEventListener('click', () => { clearTimeout(noticeTimer); $('notice').hidden = true; });
 
 /// What went wrong, said where the reader is: at home. Empty takes it away.
 function say(words) {
@@ -978,7 +997,7 @@ async function openSample(slug, title) {
     const source = await (await fetch(base + 'content.html')).text();
     const html = source.replace(/<head>/i, `<head><base href="${base}">`);
     await show({ key: 'sample:' + slug, title, author: '', html });
-    keep({ key: 'sample:' + slug, name: slug, title, sample: slug });
+    keep({ key: 'sample:' + slug, name: slug, title, sample: slug }).catch(() => {});
 }
 
 /// A kept book again, as it was kept.
@@ -1090,7 +1109,9 @@ async function loadInto(file, at) {
         const bytes = await file.arrayBuffer();
         const converted = await convert(bytes, file.name, { pdf: localStorage.getItem('nano.pdf.' + key) || undefined });
         const cover = await thumbnail(converted.cover);
-        if (!(await keep({ key, name: file.name, title: converted.title, author: converted.author || '', cover, bytes }, { at }))) throw new Error(t('No place is free: remove one of the books first.'));
+        const kept = await keep({ key, name: file.name, title: converted.title, author: converted.author || '', cover, bytes }, { at })
+            .catch((error) => { throw error.unkept ? new Error(t('There was no room left to keep the book.')) : error; });
+        if (!kept) throw new Error(t('No place is free: remove one of the books first.'));
         noteLoaded(key, converted, file);
     } catch (error) {
         say(problem(error.message || String(error)));
@@ -1162,7 +1183,7 @@ function askRoom(books, name) {
             make('h2', {}, t('Three books are kept')),
             make('p', {}, t(desktop
                 ? 'NanoReader keeps three active books. To open {name}, choose the one it replaces: that book stays in the history, with its place and its notes.'
-                : 'WebReader keeps three books. To open {name}, choose the one it replaces: that book’s file and place are removed.').replace('{name}', `«${name}»`)),
+                : 'WebReader keeps three books. To open {name}, choose a slot: the new book takes the place of the one in it.').replace('{name}', `«${name}»`)),
             rows,
             footer,
         );

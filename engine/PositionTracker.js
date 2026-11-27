@@ -455,6 +455,113 @@
                         nortonHitInk: 1 };
     var _holdDim = false;
 
+    /// The settings' own sheet: the face, the measure, the paper and the
+    /// ink, and the house rules a book's text needs. A function of the
+    /// settings and the face as the apply settled it (the East's splice),
+    /// so a change of colour alone writes it again without the rest of the
+    /// apply (`paintSettings`, #1115).
+    var _settingsFontFamily = null;
+    function settingsSheetCSS(settings, fontFamily) {
+        var fontWeightVal = settings.fontWeight || 400;
+        var fontStretchVal = settings.fontStretch || 'normal';
+        return 'html { background-color: ' + settings.bgColor + ' !important; overflow-x: hidden !important; }' +
+            ' html, body { font-family: ' + fontFamily + ' !important;' +
+            ' font-size: ' + settings.fontSize + 'px !important;' +
+            ' line-height: ' + settings.lineHeight + ' !important;' +
+            ' font-weight: ' + fontWeightVal + ' !important;' +
+            ' font-stretch: ' + fontStretchVal + ' !important;' +
+            ' color: ' + settings.textColor + ' !important; }' +
+            ' body { background-color: transparent !important;' +
+            ' -webkit-text-size-adjust: 100% !important; text-size-adjust: 100% !important;' +
+            ' max-width: ' + (settings.maxWidth || 'none') + ' !important; margin-left: auto !important; margin-right: auto !important; }' +
+            // #138: keep wide / unbreakable content inside the column so the
+            // paged (two-page) right edge isn't clipped. `overflow-wrap:
+            // break-word` only breaks a token that would otherwise overflow
+            // (long URLs/tokens) — normal text still wraps at spaces. Media,
+            // tables and <pre> are capped to the content width.
+            ' html, body { overflow-wrap: break-word !important; }' +
+            ' img, svg, picture, video, iframe { max-width: 100% !important; }' +
+            ' table { max-width: 100% !important; table-layout: fixed !important; }' +
+            // `word-break: normal` in tables (2026-09-17): the template's
+            // `break-word` on the body let a cell's min-content shrink to
+            // ONE letter, and the auto layout gave a drama table's
+            // speaker column exactly that — "H / ar / ris" down the page
+            // beside the lines. `overflow-wrap` still breaks a token that
+            // cannot fit; it does not shrink the column's minimum.
+            ' table { word-break: normal !important; }' +
+            ' td, th { overflow-wrap: break-word !important; }' +
+            // A play's speaker (Standard Ebooks' z3998:persona) stands at
+            // the top of its line and keeps a breath from it.
+            ' td[type~="z3998:persona"] { vertical-align: top !important; padding-right: 1em !important; -webkit-hyphens: none !important; hyphens: none !important; }' +
+            ' pre, code { white-space: pre-wrap !important; overflow-wrap: break-word !important; max-width: 100% !important; }' +
+            // Ruby (#1019): the reading over its kanji at half size, its
+            // own line height so it does not open the line under it.
+            ' ruby { ruby-position: over; } rt { font-size: 0.5em !important; line-height: 1 !important; text-indent: 0 !important; }' +
+            // Illustrations stand centred (user, 2026-09-10): a book's
+            // own stylesheet does not survive the import, and Gutenberg's
+            // `.fig`, `.figcenter`, `figure` and their kin lost the
+            // centring it gave them. A picture alone in its block is an
+            // illustration; a picture inside a run of text stays put.
+            ' figure, .fig, .figcenter, .figleft, .figright, .image, .illus, .illustration { text-align: center; margin: 1em 0; }' +
+            ' div > img:only-child, p > img:only-child, section > img:only-child { display: block; margin: 1em auto; }' +
+            // A wrapper whose picture was removed from the book (the
+            // card's Remove All, 2026-09-20) stays in the DOM so the
+            // tag-indexed xpaths around it hold — and folds away here.
+            ' .book-image:empty, figure:empty, .image:empty, .illus:empty, .illustration:empty { display: none !important; margin: 0 !important; }' +
+            monoImageCSS(settings) +
+            pagesFlowCSS();
+    }
+
+    /// The links in the book's link colour (and a note's marker, small).
+    function applyLinkSheet(settings) {
+        var linkColor = settings.linkColor || '';
+        if (linkColor) {
+            var linkSheet = document.getElementById('_link_override');
+            if (!linkSheet) {
+                linkSheet = document.createElement('style');
+                linkSheet.id = '_link_override';
+                document.head.appendChild(linkSheet);
+            }
+            linkSheet.textContent =
+                'a { color: ' + linkColor + ' !important; text-decoration: underline !important; text-underline-offset: 2px; }' +
+                ' a:visited { color: ' + linkColor + ' !important; }' +
+                ' a.footnote-ref { text-decoration: none !important; border-bottom: none !important; font-size: 0.75em !important; vertical-align: super !important; line-height: 0 !important; opacity: 0.7; }';
+        }
+    }
+
+    /// A change of colour alone (#1115): the paper, the ink, the links,
+    /// the grain, the pages' brightness, BookCommander's palette — painted
+    /// where each lives, with nothing laid out again and the place left
+    /// where it is. The whole road (`_applySettingsImpl`) rewrote every
+    /// sheet, re-laid the columns and restored the position for a colour;
+    /// CR #1135 took the dim off it, this takes the re-lay. Every reader of
+    /// these keys is here: the root's variables and the paper's wash, the
+    /// settings sheet, the pages' tint and the mono ink, the links, masked
+    /// pictures' frames, the frame and the ornament (their ink is the
+    /// text's), the scroll masks.
+    function paintSettings(settings) {
+        lastAppliedSettings = settings;
+        if (typeof settings.pageTextureOpacity === 'number') _pageTextureOpacity = settings.pageTextureOpacity;
+        if (typeof settings.pageTextureDark === 'boolean') _pageTextureDark = settings.pageTextureDark;
+        var root = document.documentElement.style;
+        if (settings.bgColor) { root.setProperty('--bg-color', settings.bgColor); _pageBgColor = settings.bgColor; }
+        if (settings.textColor) root.setProperty('--text-color', settings.textColor);
+        applyPageTexture();
+        var sheet = document.getElementById('_settings_override');
+        if (sheet) sheet.textContent = settingsSheetCSS(settings, _settingsFontFamily || settings.fontFamily);
+        applyPagesTint(settings);
+        applyLinkSheet(settings);
+        applyImageDisplay(settings);
+        var nortonActive = !!settings.nortonFrame;
+        if (settings.nortonInk) {
+            _nortonColors = { ink: settings.nortonInk, plate: settings.nortonPlate,
+                              hit: settings.nortonHit, hitInk: settings.nortonHitInk };
+        }
+        applyNortonFrame(settings, nortonActive);
+        _scrollMaskBgColor = settings.bgColor || '#ffffff';
+        applyScrollMasks(frameIsOn(settings, nortonActive));
+    }
+
     function onlyChanged(before, after, keys) {
         if (!before || !after) return false;
         var own = Object.prototype.hasOwnProperty;
@@ -6764,8 +6871,19 @@
                 if (typeof settings.nativeLineKeys === 'boolean') nativeLineKeys = settings.nativeLineKeys;
                 return;
             }
-            // Colour alone: the road without the dim (`_colourKeys`).
-            _holdDim = !isResizing && onlyChanged(lastAppliedSettings, settings, _colourKeys);
+            // Colour alone, on a page laid and settled: painted, nothing
+            // laid again (`paintSettings`). Mid-apply or mid-open it takes
+            // the road below — without the dim (`_colourKeys`).
+            var colourAlone = onlyChanged(lastAppliedSettings, settings, _colourKeys);
+            if (colourAlone && !isResizing && !isInitialRestorePending && _settingsFontFamily !== null) {
+                try {
+                    paintSettings(settings);
+                    return;
+                } catch (e) {
+                    // Whatever the paint missed, the whole road settles.
+                }
+            }
+            _holdDim = !isResizing && colourAlone;
             try {
                 this._applySettingsImpl(settings);
             } catch (e) {
@@ -7069,55 +7187,8 @@
                 styleSheet.id = '_settings_override';
                 document.head.appendChild(styleSheet);
             }
-            var fontWeightVal = settings.fontWeight || 400;
-            var fontStretchVal = settings.fontStretch || 'normal';
-            styleSheet.textContent =
-                'html { background-color: ' + settings.bgColor + ' !important; overflow-x: hidden !important; }' +
-                ' html, body { font-family: ' + fontFamily + ' !important;' +
-                ' font-size: ' + settings.fontSize + 'px !important;' +
-                ' line-height: ' + settings.lineHeight + ' !important;' +
-                ' font-weight: ' + fontWeightVal + ' !important;' +
-                ' font-stretch: ' + fontStretchVal + ' !important;' +
-                ' color: ' + settings.textColor + ' !important; }' +
-                ' body { background-color: transparent !important;' +
-                ' -webkit-text-size-adjust: 100% !important; text-size-adjust: 100% !important;' +
-                ' max-width: ' + (settings.maxWidth || 'none') + ' !important; margin-left: auto !important; margin-right: auto !important; }' +
-                // #138: keep wide / unbreakable content inside the column so the
-                // paged (two-page) right edge isn't clipped. `overflow-wrap:
-                // break-word` only breaks a token that would otherwise overflow
-                // (long URLs/tokens) — normal text still wraps at spaces. Media,
-                // tables and <pre> are capped to the content width.
-                ' html, body { overflow-wrap: break-word !important; }' +
-                ' img, svg, picture, video, iframe { max-width: 100% !important; }' +
-                ' table { max-width: 100% !important; table-layout: fixed !important; }' +
-                // `word-break: normal` in tables (2026-09-17): the template's
-                // `break-word` on the body let a cell's min-content shrink to
-                // ONE letter, and the auto layout gave a drama table's
-                // speaker column exactly that — "H / ar / ris" down the page
-                // beside the lines. `overflow-wrap` still breaks a token that
-                // cannot fit; it does not shrink the column's minimum.
-                ' table { word-break: normal !important; }' +
-                ' td, th { overflow-wrap: break-word !important; }' +
-                // A play's speaker (Standard Ebooks' z3998:persona) stands at
-                // the top of its line and keeps a breath from it.
-                ' td[type~="z3998:persona"] { vertical-align: top !important; padding-right: 1em !important; -webkit-hyphens: none !important; hyphens: none !important; }' +
-                ' pre, code { white-space: pre-wrap !important; overflow-wrap: break-word !important; max-width: 100% !important; }' +
-                // Ruby (#1019): the reading over its kanji at half size, its
-                // own line height so it does not open the line under it.
-                ' ruby { ruby-position: over; } rt { font-size: 0.5em !important; line-height: 1 !important; text-indent: 0 !important; }' +
-                // Illustrations stand centred (user, 2026-09-10): a book's
-                // own stylesheet does not survive the import, and Gutenberg's
-                // `.fig`, `.figcenter`, `figure` and their kin lost the
-                // centring it gave them. A picture alone in its block is an
-                // illustration; a picture inside a run of text stays put.
-                ' figure, .fig, .figcenter, .figleft, .figright, .image, .illus, .illustration { text-align: center; margin: 1em 0; }' +
-                ' div > img:only-child, p > img:only-child, section > img:only-child { display: block; margin: 1em auto; }' +
-                // A wrapper whose picture was removed from the book (the
-                // card's Remove All, 2026-09-20) stays in the DOM so the
-                // tag-indexed xpaths around it hold — and folds away here.
-                ' .book-image:empty, figure:empty, .image:empty, .illus:empty, .illustration:empty { display: none !important; margin: 0 !important; }' +
-                monoImageCSS(settings) +
-                pagesFlowCSS();
+            _settingsFontFamily = fontFamily;
+            styleSheet.textContent = settingsSheetCSS(settings, fontFamily);
             applyPagesTint(settings);
 
 
@@ -7149,19 +7220,7 @@
             }
 
             // Link styles
-            var linkColor = settings.linkColor || '';
-            if (linkColor) {
-                var linkSheet = document.getElementById('_link_override');
-                if (!linkSheet) {
-                    linkSheet = document.createElement('style');
-                    linkSheet.id = '_link_override';
-                    document.head.appendChild(linkSheet);
-                }
-                linkSheet.textContent =
-                    'a { color: ' + linkColor + ' !important; text-decoration: underline !important; text-underline-offset: 2px; }' +
-                    ' a:visited { color: ' + linkColor + ' !important; }' +
-                    ' a.footnote-ref { text-decoration: none !important; border-bottom: none !important; font-size: 0.75em !important; vertical-align: super !important; line-height: 0 !important; opacity: 0.7; }';
-            }
+            applyLinkSheet(settings);
 
             // Footnote popup styles
             var fnSheet = document.getElementById('_footnote_override');

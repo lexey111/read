@@ -10,6 +10,8 @@ export const languages = {
 };
 
 const ru = {
+    "The browser ran out of room: the book is open, but it will be gone after a reload.": "В браузере не хватило места: книга открыта, но после перезагрузки её не будет.",
+    "There was no room left to keep the book.": "Не хватило места, чтобы сохранить книгу.",
     "Brightness in other modes": "Яркость в других режимах",
     // «More in the apps» and the home's footer (27.11.2026)
     "A library for thousands of books: folders inside folders, tags, authors and series, search through the text of every book. OPDS catalogs watch for new arrivals. And the cherry on top: the library syncs between devices, and your place in the book in real time.": "Библиотека на тысячи книг: папки в папках, тэги, авторы и серии, поиск по тексту всех книг. Каталоги OPDS следят за новинками. И вишенка на торте: библиотека синхронизируется между устройствами, а место в книге — в реальном времени.",
@@ -173,13 +175,15 @@ const ru = {
     'MB': 'МБ',
     'Remove from WebReader': 'Убрать из WebReader',
     'Three books are kept': 'Хранятся три книги',
-    'WebReader keeps three books. To open {name}, choose the one it replaces: that book’s file and place are removed.': 'WebReader хранит три книги. Чтобы открыть {name}, выберите, какую заменить: её файл и место чтения удалятся.',
+    "WebReader keeps three books. To open {name}, choose a slot: the new book takes the place of the one in it.": "WebReader хранит три книги. Чтобы открыть {name}, выберите слот: новая книга заменит в нём старую.",
     'Replace': 'Заменить',
     'Cancel': 'Отмена',
     'Free slot': 'Свободный слот',
 };
 
 const uk = {
+    "The browser ran out of room: the book is open, but it will be gone after a reload.": "У браузері забракло місця: книгу відкрито, але після перезавантаження її не буде.",
+    "There was no room left to keep the book.": "Забракло місця, щоб зберегти книгу.",
     "Brightness in other modes": "Яскравість в інших режимах",
     // «More in the apps» and the home's footer (27.11.2026)
     "A library for thousands of books: folders inside folders, tags, authors and series, search through the text of every book. OPDS catalogs watch for new arrivals. And the cherry on top: the library syncs between devices, and your place in the book in real time.": "Бібліотека на тисячі книжок: теки в теках, теги, автори й серії, пошук по тексту всіх книжок. Каталоги OPDS стежать за новинками. І вишенька на торті: бібліотека синхронізується між пристроями, а місце в книжці — в реальному часі.",
@@ -343,13 +347,15 @@ const uk = {
     'MB': 'МБ',
     'Remove from WebReader': 'Прибрати з WebReader',
     'Three books are kept': 'Зберігаються три книги',
-    'WebReader keeps three books. To open {name}, choose the one it replaces: that book’s file and place are removed.': 'WebReader зберігає три книги. Щоб відкрити {name}, виберіть, яку замінити: її файл і місце читання буде видалено.',
+    "WebReader keeps three books. To open {name}, choose a slot: the new book takes the place of the one in it.": "WebReader зберігає три книги. Щоб відкрити {name}, виберіть слот: нова книга замінить у ньому стару.",
     'Replace': 'Замінити',
     'Cancel': 'Скасувати',
     'Free slot': 'Вільний слот',
 };
 
 const es = {
+    "The browser ran out of room: the book is open, but it will be gone after a reload.": "El navegador se quedó sin espacio: el libro está abierto, pero desaparecerá al recargar.",
+    "There was no room left to keep the book.": "No quedaba espacio para guardar el libro.",
     "Brightness in other modes": "Brillo en otros modos",
     // «More in the apps» and the home's footer (27.11.2026)
     "A library for thousands of books: folders inside folders, tags, authors and series, search through the text of every book. OPDS catalogs watch for new arrivals. And the cherry on top: the library syncs between devices, and your place in the book in real time.": "Una biblioteca para miles de libros: carpetas dentro de carpetas, etiquetas, autores y series, búsqueda en el texto de todos los libros. Los catálogos OPDS vigilan las novedades. Y la guinda: la biblioteca se sincroniza entre dispositivos, y la posición de lectura, en tiempo real.",
@@ -513,13 +519,15 @@ const es = {
     'MB': 'MB',
     'Remove from WebReader': 'Quitar de WebReader',
     'Three books are kept': 'Se guardan tres libros',
-    'WebReader keeps three books. To open {name}, choose the one it replaces: that book’s file and place are removed.': 'WebReader guarda tres libros. Para abrir {name}, elige cuál reemplazar: se borran su archivo y el punto de lectura.',
+    "WebReader keeps three books. To open {name}, choose a slot: the new book takes the place of the one in it.": "WebReader guarda tres libros. Para abrir {name}, elige un lugar: el libro nuevo sustituirá al que ocupa.",
     'Replace': 'Reemplazar',
     'Cancel': 'Cancelar',
     'Free slot': 'Hueco libre',
 };
 
 const fr = {
+    "The browser ran out of room: the book is open, but it will be gone after a reload.": "Le navigateur manque de place : le livre est ouvert, mais il aura disparu après un rechargement.",
+    "There was no room left to keep the book.": "Il n’y avait plus de place pour garder le livre.",
     "Brightness in other modes": "Luminosité des autres modes",
     // «More in the apps» and the home's footer (27.11.2026)
     "A library for thousands of books: folders inside folders, tags, authors and series, search through the text of every book. OPDS catalogs watch for new arrivals. And the cherry on top: the library syncs between devices, and your place in the book in real time.": "Une bibliothèque pour des milliers de livres : des dossiers dans des dossiers, des étiquettes, des auteurs et des séries, la recherche dans le texte de tous les livres. Les catalogues OPDS guettent les nouveautés. Et la cerise sur le gâteau : la bibliothèque se synchronise entre les appareils, et la position de lecture en temps réel.",
@@ -683,13 +691,15 @@ const fr = {
     'MB': 'Mo',
     'Remove from WebReader': 'Retirer de WebReader',
     'Three books are kept': 'Trois livres sont gardés',
-    'WebReader keeps three books. To open {name}, choose the one it replaces: that book’s file and place are removed.': 'WebReader garde trois livres. Pour ouvrir {name}, choisissez celui à remplacer : son fichier et votre page sont effacés.',
+    "WebReader keeps three books. To open {name}, choose a slot: the new book takes the place of the one in it.": "WebReader garde trois livres. Pour ouvrir {name}, choisissez une place : le nouveau livre y remplacera l’ancien.",
     'Replace': 'Remplacer',
     'Cancel': 'Annuler',
     'Free slot': 'Place libre',
 };
 
 const de = {
+    "The browser ran out of room: the book is open, but it will be gone after a reload.": "Im Browser ist kein Platz mehr: Das Buch ist geöffnet, nach dem Neuladen aber weg.",
+    "There was no room left to keep the book.": "Es war kein Platz mehr, um das Buch zu behalten.",
     "Brightness in other modes": "Helligkeit in anderen Modi",
     // «More in the apps» and the home's footer (27.11.2026)
     "A library for thousands of books: folders inside folders, tags, authors and series, search through the text of every book. OPDS catalogs watch for new arrivals. And the cherry on top: the library syncs between devices, and your place in the book in real time.": "Eine Bibliothek für Tausende Bücher: Ordner in Ordnern, Tags, Autoren und Reihen, die Suche im Text aller Bücher. OPDS-Kataloge halten nach Neuheiten Ausschau. Und das Sahnehäubchen: Die Bibliothek gleicht sich zwischen den Geräten ab, die Lesestelle in Echtzeit.",
@@ -853,13 +863,15 @@ const de = {
     'MB': 'MB',
     'Remove from WebReader': 'Aus WebReader entfernen',
     'Three books are kept': 'Drei Bücher werden behalten',
-    'WebReader keeps three books. To open {name}, choose the one it replaces: that book’s file and place are removed.': 'WebReader behält drei Bücher. Um {name} zu öffnen, wählen Sie, welches ersetzt wird: seine Datei und Ihre Lesestelle werden gelöscht.',
+    "WebReader keeps three books. To open {name}, choose a slot: the new book takes the place of the one in it.": "WebReader behält drei Bücher. Um {name} zu öffnen, wählen Sie einen Platz: Das neue Buch ersetzt dort das alte.",
     'Replace': 'Ersetzen',
     'Cancel': 'Abbrechen',
     'Free slot': 'Freier Platz',
 };
 
 const zh = {
+    "The browser ran out of room: the book is open, but it will be gone after a reload.": "浏览器空间不足：书已打开，但刷新后就不在了。",
+    "There was no room left to keep the book.": "空间不足，无法保存这本书。",
     "Brightness in other modes": "其他模式的亮度",
     // «More in the apps» and the home's footer (27.11.2026)
     "A library for thousands of books: folders inside folders, tags, authors and series, search through the text of every book. OPDS catalogs watch for new arrivals. And the cherry on top: the library syncs between devices, and your place in the book in real time.": "容纳上千本书的书库：文件夹套文件夹、标签、作者和系列，还能在所有书的正文里搜索。OPDS 书目会留意新书。锦上添花的是：书库在设备之间同步，阅读位置则实时同步。",
@@ -1023,13 +1035,15 @@ const zh = {
     'MB': 'MB',
     'Remove from WebReader': '从 WebReader 移除',
     'Three books are kept': '已保存三本书',
-    'WebReader keeps three books. To open {name}, choose the one it replaces: that book’s file and place are removed.': 'WebReader 保存三本书。要打开 {name}，请选择替换哪一本：它的文件和阅读位置都会删除。',
+    "WebReader keeps three books. To open {name}, choose a slot: the new book takes the place of the one in it.": "WebReader 保存三本书。要打开 {name}，请选择一个位置：新书会替换其中的旧书。",
     'Replace': '替换',
     'Cancel': '取消',
     'Free slot': '空位',
 };
 
 const ja = {
+    "The browser ran out of room: the book is open, but it will be gone after a reload.": "ブラウザの空き容量が足りません。本は開いていますが、再読み込みすると消えます。",
+    "There was no room left to keep the book.": "本を保存する空き容量がありませんでした。",
     "Brightness in other modes": "ほかのモードの明るさ",
     // «More in the apps» and the home's footer (27.11.2026)
     "A library for thousands of books: folders inside folders, tags, authors and series, search through the text of every book. OPDS catalogs watch for new arrivals. And the cherry on top: the library syncs between devices, and your place in the book in real time.": "数千冊のためのライブラリ：入れ子のフォルダ、タグ、著者とシリーズ、すべての本の本文を対象にした検索。OPDS カタログが新着を見張ります。そして極めつけ：ライブラリはデバイス間で同期し、読書位置はリアルタイムに同期します。",
@@ -1193,7 +1207,7 @@ const ja = {
     'MB': 'MB',
     'Remove from WebReader': 'WebReader から削除',
     'Three books are kept': '保存できるのは 3 冊です',
-    'WebReader keeps three books. To open {name}, choose the one it replaces: that book’s file and place are removed.': 'WebReader が保存できる本は 3 冊です。{name} を開くには、入れ替える本を選んでください。そのファイルと読んでいた位置は削除されます。',
+    "WebReader keeps three books. To open {name}, choose a slot: the new book takes the place of the one in it.": "WebReader は三冊の本を保存します。{name} を開くには場所を選んでください。新しい本がそこにある本と入れ替わります。",
     'Replace': '入れ替える',
     'Cancel': 'キャンセル',
     'Free slot': '空き枠',

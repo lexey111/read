@@ -91,10 +91,17 @@ export async function keep(record, { at } = {}) {
         keys[free] = record.key;
     }
     const kept = await run('readonly', (store) => store.get('book:' + record.key)).catch(() => null);
-    await run('readwrite', (store) => {
-        store.put({ ...(kept || {}), ...record }, 'book:' + record.key);
-        return store.put(keys, 'shelf');
-    }).catch(() => {});
+    // A write the browser refuses (no room left, a private window's cap)
+    // is said, not swallowed: the book would be open now and gone after a
+    // reload with nobody told (user, 27.11.2026).
+    try {
+        await run('readwrite', (store) => {
+            store.put({ ...(kept || {}), ...record }, 'book:' + record.key);
+            return store.put(keys, 'shelf');
+        });
+    } catch (error) {
+        throw Object.assign(new Error(error?.message || 'unkept'), { unkept: true });
+    }
     return true;
 }
 
@@ -102,7 +109,8 @@ export async function keep(record, { at } = {}) {
 /// nothing for a book that is not kept.
 export async function refresh(key, fields) {
     if (!(await order()).includes(key)) return;
-    await keep({ key, ...fields });
+    // A description brought up to date; its bytes are kept already.
+    await keep({ key, ...fields }).catch(() => {});
 }
 
 /// A book let go; the ones after it move up a slot — or, with `hole`, its

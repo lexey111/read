@@ -430,6 +430,14 @@ button.dot.chosen { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); 
     font-size: 14px; font-variant-numeric: tabular-nums; pointer-events: none; animation: fade 0.18s ease-out;
 }
 #busy[hidden] { display: none; }
+/* A word over the page (no room to keep the book): at the top, a click away. */
+#notice {
+    position: fixed; left: 50%; top: max(16px, env(safe-area-inset-top)); transform: translateX(-50%); z-index: 60;
+    width: max-content; max-width: min(520px, calc(100vw - 32px)); margin: 0; padding: 12px 18px; border-radius: 12px;
+    background: var(--surface); color: var(--ink); box-shadow: var(--shadow), 0 0 0 1px var(--line);
+    font-size: 14px; line-height: 1.4; cursor: pointer; animation: fade 0.18s ease-out;
+}
+#notice[hidden] { display: none; }
 #busy .ring { width: 18px; height: 18px; box-sizing: border-box; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--ink); animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { #busy .ring { animation-duration: 2.4s; } }
