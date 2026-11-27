@@ -6,6 +6,10 @@ import { t } from './i18n.js';
 import { desktop, appName } from './desktop.js';
 
 export const site = 'https://continuousreader.app/';
+/// The site's 1.9 pages (NanoReader's, WebReader's «as an app») are live
+/// only from the release day: until then nothing here points at them
+/// (user, 27.11.2026). Flip to true on the day the site goes out.
+export const site19 = false;
 
 // What this reader has not. The search, the pictures and the contents are
 // in both; the marks, the journal and the statistics in NanoReader.
@@ -30,15 +34,23 @@ export const apps = [
     },
     {
         id: 'pr', name: 'PlainReader', role: 'The bookshelf', terms: 'One-time purchase', ground: '#fcefd9',
-        text: 'For reading several books at once, or keeping them on a shelf to come back to later. Every book keeps its bookmarks and notes, and the shelf is in order — not a full library like ContinuousReader, but a really long shelf, with coloured sections, search and filters.',
+        text: 'For reading several books at once, or keeping them on a shelf to come back to later. Every book keeps its bookmarks and notes. Not a library like ContinuousReader, but a really long shelf, with coloured sections and filters.',
         store: 'https://apps.apple.com/app/plainreader/id6801140208',
     },
     {
         id: 'cr', name: 'ContinuousReader', role: 'The library', terms: 'One-time purchase', ground: '#f4e3cb',
-        text: 'Folders, tags, genres, favourites, search by what is new, by history, author, series, even full-text search — everything you can imagine. OPDS catalogs that check for new arrivals and download in bulk. Downloads from the web. And the cherry on top: the library and the reading position sync between devices in real time.',
+        text: "A library for thousands of books: folders inside folders, tags, authors and series, search through the text of every book. OPDS catalogs watch for new arrivals. And the cherry on top: the library syncs between devices, and your place in the book in real time.",
         store: 'https://apps.apple.com/app/continuousreader/id6783733436',
     },
 ];
+
+// NanoReader, for a browser's reader: the same three books with marks and a
+// journal, as a program (user, 27.11.2026). Not offered inside itself.
+export const program = {
+    id: 'nr', name: 'NanoReader', role: 'For Windows, Linux and Mac', terms: 'Free', ground: '#fdf1dc',
+    text: 'A simple reader as a program of its own: open a book and read. A beta for now.',
+    download: site + 'nanoreader.html#download', about: site + 'nanoreader.html',
+};
 
 const element = (tag, attributes = {}, ...children) => {
     const node = document.createElement(tag);
@@ -52,6 +64,16 @@ const element = (tag, attributes = {}, ...children) => {
 };
 
 const outside = (href, words) => element('a', { href, target: '_blank', rel: 'noopener' }, t(words));
+
+// A card: the family's picture on its own paper (a nightstand, a bookcase
+// with its lectern, a library, an old computer), the icon, the words, the doors.
+const card = (app, ...doors) => element('article', { class: 'card' },
+    element('figure', { style: `background: ${app.ground}` }, element('img', { src: `img/room-${app.id}.webp`, alt: '', loading: 'lazy' })),
+    element('header', {},
+        element('img', { src: `icons/apps/icon-${app.id}.${app.id === 'nr' ? 'png' : 'svg'}`, alt: '' }),
+        element('div', {}, element('h4', { text: app.name }), element('p', { class: 'role', text: t(app.role) }), element('p', { class: 'role', text: t(app.terms) }))),
+    element('p', { text: t(app.text) }),
+    element('p', { class: 'links' }, ...doors));
 
 export function renderApps(host) {
     host.replaceChildren(
@@ -67,15 +89,11 @@ export function renderApps(host) {
         element('p', { class: 'also', text: t(also) }),
 
         element('h3', { text: t('Three ways to keep your books') }),
-        element('div', { class: 'cards' }, ...apps.map((app) => element('article', { class: 'card' },
-            // The family's pictures: a nightstand, a bookcase with its
-            // lectern, a library — on their own paper.
-            element('figure', { style: `background: ${app.ground}` }, element('img', { src: `img/room-${app.id}.webp`, alt: '', loading: 'lazy' })),
-            element('header', {},
-                element('img', { src: `icons/apps/icon-${app.id}.svg`, alt: '' }),
-                element('div', {}, element('h4', { text: app.name }), element('p', { class: 'role', text: t(app.role) }), element('p', { class: 'role', text: t(app.terms) }))),
-            element('p', { text: t(app.text) }),
-            element('p', { class: 'links' }, outside(app.store, 'App Store'), outside(site + 'family.html', 'About it'))))),
+        element('div', { class: 'cards' }, ...apps.map((app) => card(app, outside(app.store, 'App Store'), outside(site + 'family.html', 'About it')))),
+        ...(desktop || !site19 ? [] : [
+            element('h3', { text: t('On a computer of your own') }),
+            element('div', { class: 'cards' }, card(program, outside(program.download, 'Download the beta'), outside(program.about, 'About it'))),
+        ]),
         element('p', { class: 'compare' }, outside(site + 'family.html', 'All three side by side, on the site')),
     );
 }

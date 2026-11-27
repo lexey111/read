@@ -9,7 +9,7 @@
 import { convert, formats, accept } from './book.js';
 import { download, linkIn } from './link.js';
 import { load, save, defaults, payload, theme, mix, direction, pictureStrip, turning, paged, onSystemLight, isNight, isDark, isDusk, palettes } from './model.js';
-import { renderApps } from './apps.js';
+import { renderApps, site19 } from './apps.js';
 import { ornament } from './ornament.js';
 import { version } from './version.js';
 import { renderNews, latest } from './news.js';
@@ -1252,6 +1252,9 @@ $('file').addEventListener('change', (event) => {
 });
 $('close').addEventListener('click', closeBook);
 $('settings').addEventListener('click', openSettings);
+// The same settings from the home, before any book (user, 27.11.2026):
+// the palette, the type and the page are set once and every book opens so.
+$('homeSettings').addEventListener('click', openSettings);
 function openSettings() {
     drawer.close();
     $('panel').showModal();
@@ -1393,6 +1396,19 @@ addEventListener('beforeinstallprompt', (event) => { event.preventDefault(); ins
 addEventListener('appinstalled', () => { installPrompt = null; offerInstall(); });
 $('install').querySelector('.hide').addEventListener('click', () => { localStorage.setItem('nano.install.hidden', '1'); offerInstall(); });
 
+/// The footer's «How to install as an app» (user, 27.11.2026): the site's
+/// page on it, in the reader's language. Not in NanoReader, not once the
+/// reader runs installed (any display but a browser's tab).
+{
+    const how = $('installHow');
+    const installed = !matchMedia('(display-mode: browser)').matches || navigator.standalone === true;
+    how.hidden = desktop || installed || !site19;
+    how.addEventListener('click', () => {
+        const lang = (settings.language === 'auto' ? document.documentElement.lang : settings.language) || 'en';
+        how.href = `https://continuousreader.app/web-reader.html?lang=${lang.startsWith('zh') ? 'zh' : lang.split('-')[0]}#app`;
+    });
+}
+
 /// A new version took over while the page was open: offered at home, by
 /// the version's number — never over a page being read.
 $('update').addEventListener('click', () => location.reload());
@@ -1404,7 +1420,20 @@ let updateCheck = () => {};
 // without a worker.
 if (!desktop && 'serviceWorker' in navigator && location.protocol !== 'file:') {
     const hadWorker = !!navigator.serviceWorker.controller;
-    navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadWorker) $('update').hidden = false; });
+    // A new worker took the page — but the page asks the network first, so
+    // it may be running the new files already, and «a new version is ready»
+    // then reloads into the same number (user, 27.11.2026). Told only when
+    // the published version is not the one on screen.
+    navigator.serviceWorker.addEventListener('controllerchange', async () => {
+        if (!hadWorker) return;
+        try {
+            const published = (await (await fetch('version.js', { cache: 'no-store' })).text()).match(/version = '([^']*)'/)?.[1];
+            if (published && published === version) return;
+        } catch {
+            // Not reachable: say so, as before.
+        }
+        $('update').hidden = false;
+    });
     navigator.serviceWorker.register('sw.js').then((registration) => {
         // A tab or an installed reader can stay open for days, and the
         // browser looks for a new worker only on a page load. So the page

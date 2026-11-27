@@ -8,7 +8,7 @@
 // Stamped by scripts/stamp-version.sh with every commit: a new version is
 // a new worker, which keeps its files under its own name, drops the old
 // ones and tells the open pages (`controllerchange`).
-const VERSION = '1.8.75';
+const VERSION = '1.8.78';
 const KEEP = 'webreader-' + VERSION;
 // pdf.js changes with its own number, not ours: kept across versions, so
 // a PDF opens offline after an update too. The package's version.
@@ -23,8 +23,8 @@ const SHELL = [
     'engine/paper/lined.png', 'engine/paper/squared.png', 'engine/paper/sand.png',
     'engine/paper/kraft.png', 'engine/paper/fibre.png', 'engine/paper/laid.png',
     'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
-    'icons/seal.svg', 'img/room-jr.webp', 'img/room-pr.webp', 'img/room-cr.webp',
-    'fonts/source-serif-4-latin-opsz.woff2', 'fonts/source-serif-4-latin-opsz-italic.woff2', 'fonts/inter-latin-wght.woff2', 'icons/apps/icon-jr.svg', 'icons/apps/icon-pr.svg', 'icons/apps/icon-cr.svg',
+    'icons/seal.svg', 'img/room-jr.webp', 'img/room-pr.webp', 'img/room-cr.webp', 'img/room-nr.webp',
+    'fonts/source-serif-4-latin-opsz.woff2', 'fonts/source-serif-4-latin-opsz-italic.woff2', 'fonts/inter-latin-wght.woff2', 'icons/apps/icon-jr.svg', 'icons/apps/icon-pr.svg', 'icons/apps/icon-cr.svg', 'icons/apps/icon-nr.png',
 ];
 
 self.addEventListener('install', (event) => {
