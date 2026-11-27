@@ -10,6 +10,7 @@ export const languages = {
 };
 
 const ru = {
+    "Fixes and small improvements": "Исправления и мелкие улучшения",
     "The browser ran out of room: the book is open, but it will be gone after a reload.": "В браузере не хватило места: книга открыта, но после перезагрузки её не будет.",
     "There was no room left to keep the book.": "Не хватило места, чтобы сохранить книгу.",
     "Brightness in other modes": "Яркость в других режимах",
@@ -182,6 +183,7 @@ const ru = {
 };
 
 const uk = {
+    "Fixes and small improvements": "Виправлення й дрібні поліпшення",
     "The browser ran out of room: the book is open, but it will be gone after a reload.": "У браузері забракло місця: книгу відкрито, але після перезавантаження її не буде.",
     "There was no room left to keep the book.": "Забракло місця, щоб зберегти книгу.",
     "Brightness in other modes": "Яскравість в інших режимах",
@@ -354,6 +356,7 @@ const uk = {
 };
 
 const es = {
+    "Fixes and small improvements": "Correcciones y pequeñas mejoras",
     "The browser ran out of room: the book is open, but it will be gone after a reload.": "El navegador se quedó sin espacio: el libro está abierto, pero desaparecerá al recargar.",
     "There was no room left to keep the book.": "No quedaba espacio para guardar el libro.",
     "Brightness in other modes": "Brillo en otros modos",
@@ -526,6 +529,7 @@ const es = {
 };
 
 const fr = {
+    "Fixes and small improvements": "Corrections et petites améliorations",
     "The browser ran out of room: the book is open, but it will be gone after a reload.": "Le navigateur manque de place : le livre est ouvert, mais il aura disparu après un rechargement.",
     "There was no room left to keep the book.": "Il n’y avait plus de place pour garder le livre.",
     "Brightness in other modes": "Luminosité des autres modes",
@@ -698,6 +702,7 @@ const fr = {
 };
 
 const de = {
+    "Fixes and small improvements": "Korrekturen und kleine Verbesserungen",
     "The browser ran out of room: the book is open, but it will be gone after a reload.": "Im Browser ist kein Platz mehr: Das Buch ist geöffnet, nach dem Neuladen aber weg.",
     "There was no room left to keep the book.": "Es war kein Platz mehr, um das Buch zu behalten.",
     "Brightness in other modes": "Helligkeit in anderen Modi",
@@ -870,6 +875,7 @@ const de = {
 };
 
 const zh = {
+    "Fixes and small improvements": "修复和小改进",
     "The browser ran out of room: the book is open, but it will be gone after a reload.": "浏览器空间不足：书已打开，但刷新后就不在了。",
     "There was no room left to keep the book.": "空间不足，无法保存这本书。",
     "Brightness in other modes": "其他模式的亮度",
@@ -1042,6 +1048,7 @@ const zh = {
 };
 
 const ja = {
+    "Fixes and small improvements": "修正と細かな改善",
     "The browser ran out of room: the book is open, but it will be gone after a reload.": "ブラウザの空き容量が足りません。本は開いていますが、再読み込みすると消えます。",
     "There was no room left to keep the book.": "本を保存する空き容量がありませんでした。",
     "Brightness in other modes": "ほかのモードの明るさ",

@@ -12,7 +12,7 @@ import { load, save, defaults, payload, theme, mix, direction, pictureStrip, tur
 import { renderApps, site19 } from './apps.js';
 import { ornament } from './ornament.js';
 import { version } from './version.js';
-import { renderNews, latest } from './news.js';
+import { renderNews, latest, news } from './news.js';
 import { settingsPanel } from './panel.js';
 import { progressBar } from './progress.js';
 import { bookDrawer, make } from './drawer.js';
@@ -1447,20 +1447,36 @@ if (!desktop && 'serviceWorker' in navigator && location.protocol !== 'file:') {
     // the published version is not the one on screen.
     navigator.serviceWorker.addEventListener('controllerchange', async () => {
         if (!hadWorker) return;
+        let published = null;
         try {
-            const published = (await (await fetch('version.js', { cache: 'no-store' })).text()).match(/version = '([^']*)'/)?.[1];
+            published = (await (await fetch('version.js', { cache: 'no-store' })).text()).match(/version = '([^']*)'/)?.[1];
             if (published && published === version) return;
         } catch {
             // Not reachable: say so, as before.
         }
         $('update').hidden = false;
+        // What the new version brings, on the key (user, 27.11.2026): the
+        // new What's New entries' titles, or a word that it is fixes.
+        if (!published) return;
+        try {
+            const fresh = await import(`./news.js?v=${encodeURIComponent(published)}`);
+            const known = new Set(news.map((entry) => `${entry.date}|${entry.title.en}`));
+            const lang = resolve(settings.language);
+            const titles = fresh.news.filter((entry) => !known.has(`${entry.date}|${entry.title.en}`))
+                .map((entry) => entry.title[lang] || entry.title.en);
+            $('update').title = titles.length ? `${t('What’s new')}: ${titles.join('; ')}` : t('Fixes and small improvements');
+        } catch {
+            // The new module did not load with the old page: no tip.
+        }
     });
     navigator.serviceWorker.register('sw.js').then((registration) => {
         // A tab or an installed reader can stay open for days, and the
         // browser looks for a new worker only on a page load. So the page
         // asks too (the worker's file alone, a 304 when nothing changed):
-        // back on the tab after five minutes, back at home from a book,
-        // and every half an hour while it is on screen.
+        // back on the tab or the window after five minutes, back at home
+        // from a book, and every ten minutes while it is on screen (it was
+        // half an hour: a version out for twenty minutes was not yet told,
+        // user 27.11.2026). The host's cache adds up to ten more.
         let asked = Date.now();
         updateCheck = (after = 5 * 60 * 1000) => {
             if (Date.now() - asked < after) return;
@@ -1468,7 +1484,8 @@ if (!desktop && 'serviceWorker' in navigator && location.protocol !== 'file:') {
             registration.update().catch(() => {});
         };
         document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') updateCheck(); });
-        setInterval(() => { if (document.visibilityState === 'visible') updateCheck(30 * 60 * 1000); }, 5 * 60 * 1000);
+        addEventListener('focus', () => updateCheck());
+        setInterval(() => { if (document.visibilityState === 'visible') updateCheck(10 * 60 * 1000); }, 5 * 60 * 1000);
     }).catch(() => {});
 }
 

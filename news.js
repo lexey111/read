@@ -8,6 +8,32 @@ import { desktop } from './desktop.js';
 
 const all = [
     {
+        date: '2026-11-27',
+        version: '1.8',
+        // The browser's: NanoReader's desk has its own home and its own room.
+        only: 'web',
+        title: {
+            en: "Settings at home",
+            ru: "Настройки на главной",
+            uk: "Налаштування на головній",
+            es: "Ajustes en el inicio",
+            fr: "Réglages depuis l’accueil",
+            de: "Einstellungen auf der Startseite",
+            'zh-Hans': "主页上的设置",
+            ja: "ホームで設定",
+        },
+        text: {
+            en: "The reading settings open right from the home page, before any book. The light switch has four positions: auto, day, twilight, night. In the colour settings only the slider of the current mode stands in front; the others are under «Brightness in other modes». If the browser runs out of room for a book, the reader says so.",
+            ru: "Настройки чтения открываются прямо с главной, до книги. В переключателе режима четыре положения: авто, день, сумерки, ночь. В настройках цвета впереди только ползунок того режима, что сейчас, остальные в «Яркости в других режимах». Если браузеру не хватит места для книги, читалка об этом скажет.",
+            uk: "Налаштування читання відкриваються просто з головної, ще до книги. У перемикачі режиму чотири положення: авто, день, сутінки, ніч. У налаштуваннях кольору попереду лише повзунок поточного режиму, решта — в «Яскравості в інших режимах». Якщо браузеру забракне місця для книги, читалка про це скаже.",
+            es: "Los ajustes de lectura se abren desde el inicio, antes de cualquier libro. El selector de modo tiene cuatro posiciones: auto, día, crepúsculo, noche. En los ajustes de color solo queda delante el control del modo actual; los demás están en «Brillo en otros modos». Si el navegador se queda sin espacio para un libro, el lector lo avisa.",
+            fr: "Les réglages de lecture s’ouvrent depuis l’accueil, avant tout livre. Le sélecteur de mode a quatre positions : auto, jour, crépuscule, nuit. Dans les réglages de couleur, seul le curseur du mode actuel reste devant ; les autres sont sous « Luminosité des autres modes ». Si le navigateur manque de place pour un livre, le lecteur le dit.",
+            de: "Die Leseeinstellungen öffnen sich direkt auf der Startseite, noch vor einem Buch. Der Modusschalter hat vier Stellungen: Auto, Tag, Dämmerung, Nacht. In den Farbeinstellungen steht nur der Regler des aktuellen Modus vorn, die anderen unter „Helligkeit in anderen Modi“. Hat der Browser keinen Platz mehr für ein Buch, sagt der Reader es.",
+            'zh-Hans': "阅读设置可以直接在主页打开，无需先打开书。模式开关有四档：自动、日间、黄昏、夜间。颜色设置里只在前面显示当前模式的滑块，其余的在“其他模式的亮度”里。浏览器空间不足、存不下一本书时，阅读器会告诉你。",
+            ja: "読書設定はホームから、本を開く前に開けます。モードの切り替えは自動・昼・夕暮れ・夜間の4段階です。色の設定では、今のモードのスライダーだけが前に出て、ほかは「ほかのモードの明るさ」にまとめました。ブラウザに本を保存する空きがないときは、そう知らせます。",
+        },
+    },
+    {
         date: '2026-11-26',
         version: '0.9 beta',
         // NanoReader's alone.
