@@ -25,7 +25,7 @@ export const also = desktop
 export const apps = [
     {
         id: 'jr', name: 'JustReader', role: 'The nightstand', terms: 'Free', ground: '#fdf1db',
-        text: 'Three books at hand: open a file and read.',
+        text: 'Three active books: open a file and read.',
         store: 'https://apps.apple.com/app/justreader/id6781187067',
     },
     {

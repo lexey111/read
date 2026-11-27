@@ -1,0 +1,30 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>WebReader</title>
+<!--
+  The site asks, from a hidden frame of its own: are there books open in
+  WebReader? (user, 27.11.2026: the site's header says «Back to your
+  reading?» then). The answer is a number and nothing else — no titles —
+  and it goes only to the family's site, inside the browser; nothing is
+  sent anywhere. A visitor who never opened WebReader gets no database
+  made for them: a first opening is aborted.
+-->
+<script>
+(() => {
+    if (window.parent === window) return;
+    const sites = ['https://continuousreader.app', 'https://www.continuousreader.app', 'http://127.0.0.1:8642', 'http://localhost:8642'];
+    const tell = (count) => { for (const site of sites) window.parent.postMessage({ type: 'webreader-books', count }, site); };
+    let request;
+    try { request = indexedDB.open('nano-reader'); } catch (_) { tell(0); return; }
+    request.onupgradeneeded = () => request.transaction.abort();
+    request.onerror = () => tell(0);
+    request.onsuccess = () => {
+        const db = request.result;
+        try {
+            const ask = db.transaction('books', 'readonly').objectStore('books').get('shelf');
+            ask.onsuccess = () => { const keys = ask.result; tell(Array.isArray(keys) ? keys.filter(Boolean).length : 0); db.close(); };
+            ask.onerror = () => { tell(0); db.close(); };
+        } catch (_) { tell(0); db.close(); }
+    };
+})();
+</script>

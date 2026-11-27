@@ -108,10 +108,14 @@ export const save = (settings) => localStorage.setItem('nano.settings', JSON.str
 const systemDark = matchMedia('(prefers-color-scheme: dark)');
 export const onSystemLight = (handler) => systemDark.addEventListener('change', handler);
 
-export const isNight = (s) => s.light === 'night' || (s.light === 'auto' && systemDark.matches);
+/// In a browser a dark system means twilight, not the night (user,
+/// 27.11.2026: the site and WebReader went from black to dusk together);
+/// NanoReader keeps its own four lights, its Auto the night's as before.
+const autoDusk = !window.__TAURI__;
+export const isNight = (s) => s.light === 'night' || (s.light === 'auto' && systemDark.matches && !autoDusk);
 /// Twilight (user, 26.11.2026): between the day and the night, nearer the
 /// night — the palette's greys, from a grey to a dark one.
-export const isDusk = (s) => s.light === 'dusk';
+export const isDusk = (s) => s.light === 'dusk' || (s.light === 'auto' && systemDark.matches && autoDusk);
 /// A dark window round the page: the night's or the twilight's.
 export const isDark = (s) => isNight(s) || isDusk(s);
 /// Which light's settings stand: 'day', 'dusk' or 'night'.

@@ -1161,7 +1161,7 @@ function askRoom(books, name) {
         ask.replaceChildren(
             make('h2', {}, t('Three books are kept')),
             make('p', {}, t(desktop
-                ? 'NanoReader keeps three books at hand. To open {name}, choose the one it replaces: that book stays in the history, with its place and its notes.'
+                ? 'NanoReader keeps three active books. To open {name}, choose the one it replaces: that book stays in the history, with its place and its notes.'
                 : 'WebReader keeps three books. To open {name}, choose the one it replaces: that book’s file and place are removed.').replace('{name}', `«${name}»`)),
             rows,
             footer,

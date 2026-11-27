@@ -4,8 +4,35 @@
 // build; an entry may name just the generation.
 
 import { t, resolve } from './i18n.js';
+import { desktop } from './desktop.js';
 
-export const news = [
+const all = [
+    {
+        date: '2026-11-26',
+        version: '0.9 beta',
+        // NanoReader's alone.
+        only: 'desktop',
+        title: {
+            en: "The first beta of NanoReader",
+            ru: "Первая бета NanoReader",
+            uk: "Перша бета NanoReader",
+            es: "La primera beta de NanoReader",
+            fr: "La première bêta de NanoReader",
+            de: "Die erste Beta von NanoReader",
+            'zh-Hans': "NanoReader 首个测试版",
+            ja: "NanoReader の最初のベータ版",
+        },
+        text: {
+            en: "The family’s reader as a program of its own for Windows, Linux and Mac. Its place in the family is JustReader on other platforms. Only three active books, but the closed ones go to the history and load again in one click. Keep your files in order on the disk, and read in NanoReader. Marks, notes and a comment on the book, exported for Zotero; a journal and statistics; contents, search and marks in a window of their own; day, twilight and night; books from a file or a link.",
+            ru: "Читалка семейства отдельной программой для Windows, Linux и Mac. Её место в семействе — JustReader на других платформах. Только три активные книги, но закрытые уходят в историю, и их можно загрузить снова в один клик. Организуйте файлы на диске, а читайте в NanoReader. Пометки, заметки и комментарий к книге, экспорт для Zotero; журнал и статистика; оглавление, поиск и пометки в отдельном окне; день, сумерки и ночь; книги из файла и по ссылке.",
+            uk: "Читалка родини окремою програмою для Windows, Linux і Mac. Її місце в родині — JustReader на інших платформах. Лише три активні книги, але закриті йдуть в історію, і їх можна завантажити знову в один клік. Упорядковуйте файли на диску, а читайте в NanoReader. Позначки, нотатки й коментар до книги, експорт для Zotero; журнал і статистика; зміст, пошук і позначки в окремому вікні; день, сутінки й ніч; книги з файлу і за посиланням.",
+            es: "El lector de la familia como programa propio para Windows, Linux y Mac. Su lugar en la familia: JustReader en otras plataformas. Solo tres libros activos, pero los cerrados pasan al historial y se cargan de nuevo con un clic. Ordena tus archivos en el disco y lee en NanoReader. Marcas, notas y un comentario sobre el libro, exportados para Zotero; un diario y estadísticas; índice, búsqueda y marcas en una ventana propia; día, crepúsculo y noche; libros desde un archivo o un enlace.",
+            fr: "Le lecteur de la famille en programme à part pour Windows, Linux et Mac. Sa place dans la famille : JustReader sur les autres plateformes. Trois livres actifs seulement, mais les livres fermés vont dans l’historique et se rechargent en un clic. Rangez vos fichiers sur le disque, et lisez dans NanoReader. Marques, notes et commentaire sur le livre, exportés pour Zotero ; un journal et des statistiques ; table des matières, recherche et marques dans une fenêtre à part ; jour, crépuscule et nuit ; des livres depuis un fichier ou un lien.",
+            de: "Der Reader der Familie als eigenes Programm für Windows, Linux und Mac. Sein Platz in der Familie: JustReader auf anderen Plattformen. Nur drei aktive Bücher, aber die geschlossenen kommen in den Verlauf und lassen sich mit einem Klick wieder laden. Ordnen Sie Ihre Dateien auf der Festplatte, und lesen Sie in NanoReader. Markierungen, Notizen und ein Kommentar zum Buch, exportiert für Zotero; ein Journal und Statistiken; Inhalt, Suche und Markierungen in einem eigenen Fenster; Tag, Dämmerung und Nacht; Bücher aus einer Datei oder über einen Link.",
+            'zh-Hans': "家族的阅读器，作为独立程序登陆 Windows、Linux 和 Mac。它在家族中的位置：其他平台上的 JustReader。只有三本活跃的书，关闭的书进入历史记录，一键即可再次载入。文件在磁盘上整理，书在 NanoReader 里读。标记、笔记和对整本书的备注，可导出到 Zotero；阅读日志和统计；目录、搜索和标记在单独的窗口中；白天、黄昏和夜晚；从文件或链接载入图书。",
+            ja: "ファミリーのリーダーを、Windows・Linux・Mac 用の単体プログラムに。ファミリーでの位置づけは、ほかのプラットフォームの JustReader です。アクティブな本は3冊だけ。閉じた本は履歴に入り、ワンクリックでまた読み込めます。ファイルはディスクで整理し、読むのは NanoReader で。マーク、メモ、本へのコメント、Zotero 向けの書き出し；読書ログと統計；目次・検索・マークは別ウィンドウで；昼・夕暮れ・夜；ファイルやリンクから本を読み込めます。",
+        },
+    },
     {
         date: '2026-11-24',
         version: '1.8',
@@ -34,14 +61,14 @@ export const news = [
         date: '2026-11-13',
         version: '1.8',
         title: {
-            en: 'Three books at hand',
-            ru: 'Три книги под рукой',
-            uk: 'Три книги під рукою',
-            es: 'Tres libros a mano',
-            fr: 'Trois livres sous la main',
-            de: 'Drei Bücher zur Hand',
-            'zh-Hans': '三本书随手可读',
-            ja: '3 冊を手元に',
+            en: 'Three active books',
+            ru: 'Три активные книги',
+            uk: 'Три активні книги',
+            es: 'Tres libros activos',
+            fr: 'Trois livres actifs',
+            de: 'Drei aktive Bücher',
+            'zh-Hans': '三本活跃的书',
+            ja: 'アクティブな本は3冊',
         },
         text: {
             en: 'WebReader now keeps three books, each with its cover and the place where you stopped. A new one takes a free slot; with three kept, it asks which one to let go. A ✕ on a card removes a book and all that was kept of it.',
@@ -154,6 +181,10 @@ export const news = [
 
 /// What «seen» is measured against: the newest entry's date and the count,
 /// so a second entry on the same day is news too.
+/// The entries this reader tells: one marked `only: 'desktop'` is
+/// NanoReader's, not the browser's.
+export const news = all.filter((entry) => !entry.only || (entry.only === 'desktop') === desktop);
+
 export const latest = news.length ? `${news[0].date}.${news.length}` : '';
 
 const element = (tag, attributes = {}, ...children) => {

@@ -26,7 +26,7 @@ const links = {
 const words = {
     header: 'One reading engine: in a browser, on Apple’s devices and on other computers. You are in {name}.',
     web: 'The reader in a browser tab, simpler than in the apps. Works on any device, with nothing to install. The book is stored and processed locally, on the device you opened it on.',
-    jr: 'Three books at hand: open a file and read.',
+    jr: 'Three active books: open a file and read.',
     nr: 'A simple reader as a program of its own: open a book and read. A beta for now.',
     bought: 'One reading engine for all. Bought once for Mac, iPad and iPhone, no subscription, with Family Sharing.',
     // The three readers of three books say why (user, 26.11.2026).
