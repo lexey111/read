@@ -10,6 +10,7 @@ export const languages = {
 };
 
 const ru = {
+    "Brightness in other modes": "Яркость в других режимах",
     // «More in the apps» and the home's footer (27.11.2026)
     "A library for thousands of books: folders inside folders, tags, authors and series, search through the text of every book. OPDS catalogs watch for new arrivals. And the cherry on top: the library syncs between devices, and your place in the book in real time.": "Библиотека на тысячи книг: папки в папках, тэги, авторы и серии, поиск по тексту всех книг. Каталоги OPDS следят за новинками. И вишенка на торте: библиотека синхронизируется между устройствами, а место в книге — в реальном времени.",
     "For reading several books at once, or keeping them on a shelf to come back to later. Every book keeps its bookmarks and notes. Not a library like ContinuousReader, but a really long shelf, with coloured sections and filters.": "Для тех, кто читает несколько книг сразу или держит их на полке, чтобы вернуться позже. У каждой книги свои закладки и заметки. Это не библиотека, как ContinuousReader, но реально длинная полка, с цветными секциями и фильтрами.",
@@ -179,6 +180,7 @@ const ru = {
 };
 
 const uk = {
+    "Brightness in other modes": "Яскравість в інших режимах",
     // «More in the apps» and the home's footer (27.11.2026)
     "A library for thousands of books: folders inside folders, tags, authors and series, search through the text of every book. OPDS catalogs watch for new arrivals. And the cherry on top: the library syncs between devices, and your place in the book in real time.": "Бібліотека на тисячі книжок: теки в теках, теги, автори й серії, пошук по тексту всіх книжок. Каталоги OPDS стежать за новинками. І вишенька на торті: бібліотека синхронізується між пристроями, а місце в книжці — в реальному часі.",
     "For reading several books at once, or keeping them on a shelf to come back to later. Every book keeps its bookmarks and notes. Not a library like ContinuousReader, but a really long shelf, with coloured sections and filters.": "Для тих, хто читає кілька книг одразу або тримає їх на полиці, щоб повернутися пізніше. У кожної книги свої закладки й нотатки. Це не бібліотека, як ContinuousReader, але справді довга полиця, з кольоровими секціями й фільтрами.",
@@ -348,6 +350,7 @@ const uk = {
 };
 
 const es = {
+    "Brightness in other modes": "Brillo en otros modos",
     // «More in the apps» and the home's footer (27.11.2026)
     "A library for thousands of books: folders inside folders, tags, authors and series, search through the text of every book. OPDS catalogs watch for new arrivals. And the cherry on top: the library syncs between devices, and your place in the book in real time.": "Una biblioteca para miles de libros: carpetas dentro de carpetas, etiquetas, autores y series, búsqueda en el texto de todos los libros. Los catálogos OPDS vigilan las novedades. Y la guinda: la biblioteca se sincroniza entre dispositivos, y la posición de lectura, en tiempo real.",
     "For reading several books at once, or keeping them on a shelf to come back to later. Every book keeps its bookmarks and notes. Not a library like ContinuousReader, but a really long shelf, with coloured sections and filters.": "Para quien lee varios libros a la vez o los guarda en la estantería para volver más tarde. Cada libro conserva sus marcadores y notas. No es una biblioteca como ContinuousReader, pero sí una estantería muy larga, con secciones de colores y filtros.",
@@ -517,6 +520,7 @@ const es = {
 };
 
 const fr = {
+    "Brightness in other modes": "Luminosité des autres modes",
     // «More in the apps» and the home's footer (27.11.2026)
     "A library for thousands of books: folders inside folders, tags, authors and series, search through the text of every book. OPDS catalogs watch for new arrivals. And the cherry on top: the library syncs between devices, and your place in the book in real time.": "Une bibliothèque pour des milliers de livres : des dossiers dans des dossiers, des étiquettes, des auteurs et des séries, la recherche dans le texte de tous les livres. Les catalogues OPDS guettent les nouveautés. Et la cerise sur le gâteau : la bibliothèque se synchronise entre les appareils, et la position de lecture en temps réel.",
     "For reading several books at once, or keeping them on a shelf to come back to later. Every book keeps its bookmarks and notes. Not a library like ContinuousReader, but a really long shelf, with coloured sections and filters.": "Pour qui lit plusieurs livres à la fois ou les garde sur l’étagère pour y revenir plus tard. Chaque livre garde ses signets et ses notes. Pas une bibliothèque comme ContinuousReader, mais une très longue étagère, avec des sections en couleur et des filtres.",
@@ -686,6 +690,7 @@ const fr = {
 };
 
 const de = {
+    "Brightness in other modes": "Helligkeit in anderen Modi",
     // «More in the apps» and the home's footer (27.11.2026)
     "A library for thousands of books: folders inside folders, tags, authors and series, search through the text of every book. OPDS catalogs watch for new arrivals. And the cherry on top: the library syncs between devices, and your place in the book in real time.": "Eine Bibliothek für Tausende Bücher: Ordner in Ordnern, Tags, Autoren und Reihen, die Suche im Text aller Bücher. OPDS-Kataloge halten nach Neuheiten Ausschau. Und das Sahnehäubchen: Die Bibliothek gleicht sich zwischen den Geräten ab, die Lesestelle in Echtzeit.",
     "For reading several books at once, or keeping them on a shelf to come back to later. Every book keeps its bookmarks and notes. Not a library like ContinuousReader, but a really long shelf, with coloured sections and filters.": "Für alle, die mehrere Bücher zugleich lesen oder sie im Regal behalten, um später zurückzukehren. Jedes Buch behält seine Lesezeichen und Notizen. Keine Bibliothek wie ContinuousReader, aber ein wirklich langes Regal, mit farbigen Abschnitten und Filtern.",
@@ -855,6 +860,7 @@ const de = {
 };
 
 const zh = {
+    "Brightness in other modes": "其他模式的亮度",
     // «More in the apps» and the home's footer (27.11.2026)
     "A library for thousands of books: folders inside folders, tags, authors and series, search through the text of every book. OPDS catalogs watch for new arrivals. And the cherry on top: the library syncs between devices, and your place in the book in real time.": "容纳上千本书的书库：文件夹套文件夹、标签、作者和系列，还能在所有书的正文里搜索。OPDS 书目会留意新书。锦上添花的是：书库在设备之间同步，阅读位置则实时同步。",
     "For reading several books at once, or keeping them on a shelf to come back to later. Every book keeps its bookmarks and notes. Not a library like ContinuousReader, but a really long shelf, with coloured sections and filters.": "适合同时读几本书、或把书放在书架上以后再读的人。每本书都保留自己的书签和笔记。它不是 ContinuousReader 那样的书库，而是一个真正很长的书架，有彩色分区和筛选。",
@@ -1024,6 +1030,7 @@ const zh = {
 };
 
 const ja = {
+    "Brightness in other modes": "ほかのモードの明るさ",
     // «More in the apps» and the home's footer (27.11.2026)
     "A library for thousands of books: folders inside folders, tags, authors and series, search through the text of every book. OPDS catalogs watch for new arrivals. And the cherry on top: the library syncs between devices, and your place in the book in real time.": "数千冊のためのライブラリ：入れ子のフォルダ、タグ、著者とシリーズ、すべての本の本文を対象にした検索。OPDS カタログが新着を見張ります。そして極めつけ：ライブラリはデバイス間で同期し、読書位置はリアルタイムに同期します。",
     "For reading several books at once, or keeping them on a shelf to come back to later. Every book keeps its bookmarks and notes. Not a library like ContinuousReader, but a really long shelf, with coloured sections and filters.": "複数の本を同時に読む人、あとで戻るために本棚に置いておく人のために。本ごとにブックマークとメモが残ります。ContinuousReader のようなライブラリではありませんが、色分けされたセクションとフィルタのある、本当に長い本棚です。",

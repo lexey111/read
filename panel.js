@@ -65,11 +65,6 @@ const frameTile = (drawing, kind) => `<svg viewBox="0 0 36 44">${kind === 'two'
 
 const row = (label, control, attributes = {}) => element('div', Object.assign({ class: 'row' }, attributes), element('span', { class: 'name', text: t(label) }), control);
 
-/// Under the settings of the other light: why the page does not change,
-/// and the key that shows them.
-const elsewhere = (words, light) => element('p', { class: 'elsewhere' },
-    element('span', { text: t(words) }), ' ',
-    element('button', { type: 'button', class: 'link', 'data-show': light, text: t('Turn on') }));
 
 export function settingsPanel(dialog, { settings, onChange, onReset, onLanguage, context }) {
   function build() {
@@ -79,19 +74,24 @@ export function settingsPanel(dialog, { settings, onChange, onReset, onLanguage,
 
     const colour = element('section', {},
         element('h3', { text: t('Colour') }),
-        row('Light', segmented('light', [['auto', 'Auto'], ['day', 'Day'], ['dusk', 'Twilight'], ['night', 'Night']])),
+        // The palette first, then the light, then only that light's tone:
+        // whoever finds the page too dark moves the slider in front of them,
+        // not the one for a light they are not in. The other lights' tones
+        // fold away below (user, 27.11.2026).
         row('Palette', element('div', { class: 'swatches', id: 'palettes' })),
-        element('div', { class: 'when', 'data-when': 'day' },
-            row('Day', element('div', { class: 'slider tone' }, element('input', { type: 'range', min: 0, max: 6, step: 1, 'data-slider': 'dayTone', 'aria-label': t('Day tone') }), element('output', { 'data-output': 'dayTone' }))),
-            elsewhere('Applies in day mode.', 'day')),
-        element('div', { class: 'when', 'data-when': 'dusk' },
-            row('Twilight', element('div', { class: 'slider tone dusk' }, element('input', { type: 'range', min: 0, max: 2, step: 1, 'data-slider': 'duskTone', 'aria-label': t('Twilight tone') }), element('output', { 'data-output': 'duskTone' }))),
-            elsewhere('Applies in twilight mode.', 'dusk')),
-        element('div', { class: 'when', 'data-when': 'night' },
-            row('Night', element('div', { class: 'slider tone' }, element('input', { type: 'range', min: 0, max: 6, step: 1, 'data-slider': 'nightTone', 'aria-label': t('Night tone') }), element('output', { 'data-output': 'nightTone' }))),
-            row('Text at night', slider('nightText', ranges.nightText, 'Text brightness at night'), { 'data-text': '' }),
-            row('Pages at night', slider('nightPages', ranges.nightPages, 'Page brightness at night'), { 'data-pictures': '' }),
-            elsewhere('Applies in night mode.', 'night')),
+        row('Light', segmented('light', [['auto', 'Auto'], ['day', 'Day'], ['dusk', 'Twilight'], ['night', 'Night']])),
+        element('div', { class: 'lights', id: 'lightNow' },
+            element('div', { class: 'when', 'data-when': 'day' },
+                row('Day', element('div', { class: 'slider tone' }, element('input', { type: 'range', min: 0, max: 6, step: 1, 'data-slider': 'dayTone', 'aria-label': t('Day tone') }), element('output', { 'data-output': 'dayTone' })))),
+            element('div', { class: 'when', 'data-when': 'dusk' },
+                row('Twilight', element('div', { class: 'slider tone dusk' }, element('input', { type: 'range', min: 0, max: 2, step: 1, 'data-slider': 'duskTone', 'aria-label': t('Twilight tone') }), element('output', { 'data-output': 'duskTone' })))),
+            element('div', { class: 'when', 'data-when': 'night' },
+                row('Night', element('div', { class: 'slider tone' }, element('input', { type: 'range', min: 0, max: 6, step: 1, 'data-slider': 'nightTone', 'aria-label': t('Night tone') }), element('output', { 'data-output': 'nightTone' }))),
+                row('Text at night', slider('nightText', ranges.nightText, 'Text brightness at night'), { 'data-text': '' }),
+                row('Pages at night', slider('nightPages', ranges.nightPages, 'Page brightness at night'), { 'data-pictures': '' }))),
+        element('details', { class: 'others', id: 'lightOthers' },
+            element('summary', { text: t('Brightness in other modes') }),
+            element('div', { class: 'lights' })),
         row('Pages', element('label', { class: 'switch' },
             element('input', { type: 'checkbox', id: 'transparentPages', role: 'switch' }),
             element('span', { text: t('Transparent page background') })), { 'data-pictures': '' }));
@@ -178,21 +178,9 @@ export function settingsPanel(dialog, { settings, onChange, onReset, onLanguage,
         if (key.id === 'panelReset') return onReset();
         if (key.dataset.paper) { settings.paper = key.dataset.paper; return onChange('paper'); }
         if (key.dataset.palette) { settings.palette = key.dataset.palette; return onChange('palette'); }
-        if (key.dataset.show) return show(key.dataset.show);
         const group = key.closest('[data-setting]');
         if (group && key.dataset.value !== undefined) onChange(group.dataset.setting, key.dataset.value);
     });
-    // «Turn on» under the other light's settings switches the light; the
-    // one under these takes the reader back to the light they had (Auto,
-    // say) when that gives the look asked for.
-    let returnTo = null;
-    function show(light) {
-        const back = returnTo !== null && lightOf({ light: returnTo }) === light ? returnTo : null;
-        returnTo = back === null ? settings.light : null;
-        onChange('light', back ?? light);
-        dialog.querySelector(`[data-when="${light}"] input`)?.focus();
-    }
-
     // A click on the backdrop closes.
     dialog.addEventListener('pointerdown', (event) => {
         if (event.target !== dialog) return;
@@ -220,6 +208,8 @@ export function settingsPanel(dialog, { settings, onChange, onReset, onLanguage,
         dialog.querySelector('#transparentPages').checked = settings.transparentPages;
         dialog.querySelector('#language').value = settings.language || 'auto';
         for (const tile of dialog.querySelectorAll('.paper')) tile.classList.toggle('chosen', tile.dataset.paper === settings.paper);
+        // The swatches' «Aa» in the chosen face, as the page will read (user, 27.11.2026).
+        dialog.style.setProperty('--face', (faces[settings.face] || faces.serif).stack);
 
         // The palettes as the page each gives at this light; the tone
         // sliders' tracks as the palette's seven pages.
@@ -231,12 +221,18 @@ export function settingsPanel(dialog, { settings, onChange, onReset, onLanguage,
         for (const input of dialog.querySelectorAll('.tone:not(.dusk) input')) input.style.setProperty('--track', `linear-gradient(to right, ${stops})`);
         const dusk = [0, 1, 2].map((step, i) => `${duskColours(palette, step).bg} ${(i / 3 * 100).toFixed(2)}% ${((i + 1) / 3 * 100).toFixed(2)}%`).join(', ');
         dialog.querySelector('.tone.dusk input')?.style.setProperty('--track', `linear-gradient(to right, ${dusk})`);
-        // The other light's settings, muted, with a word on why.
+        // The light in force keeps its tone in front; the others go under
+        // the fold, in their order. Moved only when the light changes, so a
+        // slider being dragged stays put.
         const now = lightOf(settings);
-        for (const block of dialog.querySelectorAll('[data-when]')) {
-            const away = block.dataset.when !== now;
-            block.classList.toggle('away', away);
-            block.querySelector('.elsewhere').hidden = !away;
+        const here = dialog.querySelector('#lightNow');
+        const there = dialog.querySelector('#lightOthers .lights');
+        if (here.firstElementChild?.dataset.when !== now || here.children.length !== 1) {
+            const blocks = [...dialog.querySelectorAll('[data-when]')];
+            for (const light of ['day', 'dusk', 'night']) {
+                const block = blocks.find((b) => b.dataset.when === light);
+                (light === now ? here : there).append(block);
+            }
         }
 
         for (const node of dialog.querySelectorAll('[data-text]')) node.hidden = pictures;

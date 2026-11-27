@@ -485,13 +485,12 @@ button.dot.chosen { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); 
 #panel h3 { margin: 0 0 14px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); }
 #panel .row { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: center; gap: 12px; min-height: 36px; margin-bottom: 8px; }
 #panel .row .name { color: var(--faint); }
-/* The other light's settings: muted, with the word on why and the key
-   that shows them. */
-#panel .when .row > :not(.name) { transition: opacity 0.2s; }
-#panel .when.away .row > :not(.name) { opacity: 0.45; }
-#panel .elsewhere { margin: -2px 0 12px 108px; font-size: 12px; color: var(--faint); }
-#panel .elsewhere .link { background: none; padding: 0; border-radius: 0; font: inherit; color: var(--ink); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
-#panel .elsewhere .link:hover { background: none; text-decoration-color: currentColor; }
+/* The other lights' tones, folded under the one in force. */
+#panel details.others > summary { list-style: none; display: inline-flex; align-items: center; gap: 8px; margin: 0 0 10px 108px; font-size: 12px; color: var(--faint); cursor: pointer; user-select: none; }
+#panel details.others > summary::-webkit-details-marker { display: none; }
+#panel details.others > summary::before { content: ''; width: 5px; height: 5px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform 0.15s; }
+#panel details.others[open] > summary::before { transform: translateY(-2px) rotate(45deg); }
+#panel details.others > summary:hover { color: var(--ink); }
 
 /* A choice by words. */
 .segmented { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 10px; background: var(--key); justify-self: start; }
@@ -514,13 +513,13 @@ button.dot.chosen { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); 
 
 /* Palettes: the page each gives. */
 .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
-.swatch { width: 36px; height: 36px; padding: 0; border-radius: 50%; font: 600 14px/1 Georgia, serif; box-shadow: inset 0 0 0 1px var(--line); transition: transform 0.12s; }
+.swatch { width: 36px; height: 36px; padding: 0; border-radius: 50%; font: 600 14px/1 var(--face, Georgia, serif); box-shadow: inset 0 0 0 1px var(--line); transition: transform 0.12s; }
 .swatch:hover { transform: scale(1.06); }
 .swatch.chosen { box-shadow: inset 0 0 0 1px var(--line), 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); }
 
 /* Paper: tiles that wear their grain. */
 .papers { display: flex; gap: 6px; flex-wrap: wrap; }
-.paper { width: 32px; height: 32px; padding: 0; border-radius: 9px; background-color: var(--ground); background-size: 160px; background-position: center; background-blend-mode: hard-light; box-shadow: inset 0 0 0 1px var(--line); font: 600 12px/1 Georgia, serif; }
+.paper { width: 32px; height: 32px; padding: 0; border-radius: 9px; background-color: var(--ground); background-size: 160px; background-position: center; background-blend-mode: hard-light; box-shadow: inset 0 0 0 1px var(--line); font: 600 12px/1 var(--face, Georgia, serif); }
 .paper:hover { background-color: var(--ground); filter: brightness(0.97); }
 .paper.chosen { box-shadow: inset 0 0 0 1px var(--line), 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); }
 
@@ -586,7 +585,16 @@ button.dot.chosen { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); 
     #panel footer { padding: 8px 20px 16px 12px; flex-wrap: wrap; }
     #panel .row { grid-template-columns: 1fr; gap: 6px; margin-bottom: 14px; }
     #panel .row .name { font-size: 12px; }
-    #panel .elsewhere { margin: -8px 0 16px; }
+    #panel details.others > summary { margin: -4px 0 14px; }
     .faces { gap: 6px; }
     #drawer { left: 0; right: 0; bottom: 0; transform: none; width: 100%; height: 70vh; border-radius: 18px 18px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* The narrowest phones: four lights and the settings beside the language,
+   whose name keeps a few letters (user, 27.11.2026). */
+@media (max-width: 380px) {
+    #home .top { gap: 6px; }
+    #home .top .segmented.icons { padding: 2px; }
+    #home .top .segmented.icons button { padding: 4px 4px; }
+    #home .top .segmented.icons svg { width: 17px; height: 17px; }
 }
